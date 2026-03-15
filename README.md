@@ -1,4 +1,4 @@
-# LineX Bot Controller 🤖🚙
+# LineX Bot Controller 
 
 A custom React Native Android application built to remotely control an Arduino-powered line-following robot via Bluetooth Classic (HC-05 module). 
 
