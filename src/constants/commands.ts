@@ -28,52 +28,34 @@ export const CMD_MANUAL_MODE = 'M';
  * Values are the Bluetooth command characters.
  */
 export const VOICE_COMMAND_MAP: Record<string, string> = {
-  forward: CMD_FORWARD,
-  'go forward': CMD_FORWARD,
-  'move forward': CMD_FORWARD,
-  ahead: CMD_FORWARD,
-
-  backward: CMD_BACKWARD,
-  'go backward': CMD_BACKWARD,
-  'move backward': CMD_BACKWARD,
-  back: CMD_BACKWARD,
-  reverse: CMD_BACKWARD,
-
-  left: CMD_RIGHT,
-  'turn left': CMD_RIGHT,
-  'go left': CMD_RIGHT,
-
-  right: CMD_LEFT,
-  'turn right': CMD_LEFT,
-  'go right': CMD_LEFT,
-
-  stop: CMD_STOP,
-  halt: CMD_STOP,
-  'shut down': CMD_STOP,
-
-  spin: CMD_SPIN,
-  rotate: CMD_SPIN,
-  '360': CMD_SPIN,
-
-  'speed 1': CMD_SPEED_1,
-  'speed one': CMD_SPEED_1,
-  slow: CMD_SPEED_1,
-
-  'speed 2': CMD_SPEED_2,
-  'speed two': CMD_SPEED_2,
-  medium: CMD_SPEED_2,
-
-  'speed 3': CMD_SPEED_3,
-  'speed three': CMD_SPEED_3,
-  fast: CMD_SPEED_3,
-
-  auto: CMD_AUTO_MODE,
-  'auto mode': CMD_AUTO_MODE,
-  automatic: CMD_AUTO_MODE,
-  'line follow': CMD_AUTO_MODE,
-
-  manual: CMD_MANUAL_MODE,
-  'manual mode': CMD_MANUAL_MODE,
+  // Forward
+  forward: CMD_FORWARD, 'go forward': CMD_FORWARD, 'move forward': CMD_FORWARD,
+  ahead: CMD_FORWARD, straight: CMD_FORWARD, 'drive up': CMD_FORWARD, 'push forward': CMD_FORWARD,
+  
+  // Backward
+  backward: CMD_BACKWARD, 'go backward': CMD_BACKWARD, 'move backward': CMD_BACKWARD,
+  back: CMD_BACKWARD, reverse: CMD_BACKWARD, 'go back': CMD_BACKWARD, 'drive back': CMD_BACKWARD,
+  
+  // Left -> Right logic inverted per physical robot constraint
+  left: CMD_RIGHT, 'turn left': CMD_RIGHT, 'go left': CMD_RIGHT, 'steer left': CMD_RIGHT, 'pan left': CMD_RIGHT,
+  
+  // Right -> Left logic inverted
+  right: CMD_LEFT, 'turn right': CMD_LEFT, 'go right': CMD_LEFT, 'steer right': CMD_LEFT, 'pan right': CMD_LEFT,
+  
+  // Stop
+  stop: CMD_STOP, halt: CMD_STOP, 'shut down': CMD_STOP, brake: CMD_STOP, freeze: CMD_STOP, 'kill switch': CMD_STOP,
+  
+  // Spin
+  spin: CMD_SPIN, rotate: CMD_SPIN, '360': CMD_SPIN, twirl: CMD_SPIN, 'spin around': CMD_SPIN,
+  
+  // Speeds
+  'speed 1': CMD_SPEED_1, 'speed one': CMD_SPEED_1, slow: CMD_SPEED_1, 'gear 1': CMD_SPEED_1, 'speed minimum': CMD_SPEED_1,
+  'speed 2': CMD_SPEED_2, 'speed two': CMD_SPEED_2, medium: CMD_SPEED_2, 'gear 2': CMD_SPEED_2, 'speed normal': CMD_SPEED_2,
+  'speed 3': CMD_SPEED_3, 'speed three': CMD_SPEED_3, fast: CMD_SPEED_3, 'gear 3': CMD_SPEED_3, 'speed maximum': CMD_SPEED_3,
+  
+  // Modes
+  auto: CMD_AUTO_MODE, 'auto mode': CMD_AUTO_MODE, automatic: CMD_AUTO_MODE, 'line follow': CMD_AUTO_MODE, 'self drive': CMD_AUTO_MODE,
+  manual: CMD_MANUAL_MODE, 'manual mode': CMD_MANUAL_MODE, 'user control': CMD_MANUAL_MODE, 'take control': CMD_MANUAL_MODE,
 };
 
 /**

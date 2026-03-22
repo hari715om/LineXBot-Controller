@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useState, useEffect, useCallback, useRef} from 'react';
 import {
   View,
   TouchableOpacity,
@@ -21,6 +21,7 @@ const VoiceButton: React.FC = () => {
   const [matchedCommand, setMatchedCommand] = useState('');
   const [error, setError] = useState('');
   const [pulseAnim] = useState(new Animated.Value(1));
+  const isListeningIntent = useRef(false);
 
   const requestMicPermission = useCallback(async (): Promise<boolean> => {
     if (Platform.OS !== 'android') {
@@ -37,31 +38,48 @@ const VoiceButton: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const onSpeechResults = (e: SpeechResultsEvent) => {
+    const onSpeechPartialResults = (e: SpeechResultsEvent) => {
       const text = e.value?.[0] ?? '';
       setSpokenText(text);
       processCommand(text);
     };
 
+    const restartCurrentSession = () => {
+      if (isListeningIntent.current) {
+        Voice.start('en-US').catch(err => {
+          console.warn('[Voice] Auto-restart failed:', err);
+          isListeningIntent.current = false;
+          setIsListening(false);
+          stopPulseAnimation();
+        });
+      } else {
+        setIsListening(false);
+        stopPulseAnimation();
+      }
+    };
+
     const onSpeechError = (e: SpeechErrorEvent) => {
-      console.warn('[Voice] Error:', e.error);
-      setError('Could not recognize speech');
-      setIsListening(false);
-      stopPulseAnimation();
+      if (e.error && e.error.message && e.error.message.includes('No match')) {
+        // Ignore "No match" from short silence to keep log clean
+      } else {
+        console.warn('[Voice] Error:', e.error);
+        setError('Could not recognize speech');
+      }
+      restartCurrentSession();
     };
 
     const onSpeechEnd = () => {
-      setIsListening(false);
-      stopPulseAnimation();
+      restartCurrentSession();
     };
 
-    Voice.onSpeechResults = onSpeechResults;
+    Voice.onSpeechPartialResults = onSpeechPartialResults;
     Voice.onSpeechError = onSpeechError;
     Voice.onSpeechEnd = onSpeechEnd;
 
     return () => {
       Voice.destroy().then(Voice.removeAllListeners);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const processCommand = async (text: string) => {
@@ -98,7 +116,8 @@ const VoiceButton: React.FC = () => {
   };
 
   const toggleListening = async () => {
-    if (isListening) {
+    if (isListeningIntent.current) {
+      isListeningIntent.current = false;
       try {
         await Voice.stop();
       } catch (e) {
@@ -106,6 +125,7 @@ const VoiceButton: React.FC = () => {
       }
       setIsListening(false);
       stopPulseAnimation();
+      RobotCommandService.resetVoiceTracker();
     } else {
       const hasPerm = await requestMicPermission();
       if (!hasPerm) {
@@ -118,6 +138,7 @@ const VoiceButton: React.FC = () => {
       setError('');
       setIsListening(true);
       startPulseAnimation();
+      isListeningIntent.current = true;
 
       try {
         await Voice.start('en-US');
@@ -126,6 +147,7 @@ const VoiceButton: React.FC = () => {
         setError('VOICE SYSTEM FAILURE');
         setIsListening(false);
         stopPulseAnimation();
+        isListeningIntent.current = false;
       }
     }
   };

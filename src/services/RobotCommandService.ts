@@ -9,10 +9,13 @@ import BluetoothService from './BluetoothService';
 import {VOICE_COMMAND_MAP, CMD_STOP} from '../constants/commands';
 
 class RobotCommandService {
+  private lastSentCommand: string | null = null;
+
   /**
    * Send a direct command character to the robot.
    */
   async sendCommand(command: string): Promise<boolean> {
+    this.lastSentCommand = command;
     return BluetoothService.send(command);
   }
 
@@ -24,30 +27,50 @@ class RobotCommandService {
   }
 
   /**
-   * Process a voice recognition result string.
-   * Tries to match against the VOICE_COMMAND_MAP.
-   *
-   * @returns The command sent, or null if unrecognized.
+   * Reset the debounce tracker when mic is toggled off
+   */
+  resetVoiceTracker(): void {
+    this.lastSentCommand = null;
+  }
+
+  /**
+   * Process a continuous voice recognition string from partial results.
+   * Finds the most recently spoken phrase by scanning from the end of the string.
    */
   async processVoiceCommand(spokenText: string): Promise<string | null> {
     const normalized = spokenText.toLowerCase().trim();
 
-    // Direct match
-    if (VOICE_COMMAND_MAP[normalized]) {
-      const cmd = VOICE_COMMAND_MAP[normalized];
-      await this.sendCommand(cmd);
-      return cmd;
-    }
+    let bestMatchCmd: string | null = null;
+    let highestIndex = -1;
 
-    // Partial / fuzzy match — check if spoken text contains a known phrase
+    // Scan backwards: find the matching phrase closest to the end of the text
     for (const [phrase, cmd] of Object.entries(VOICE_COMMAND_MAP)) {
-      if (normalized.includes(phrase)) {
-        await this.sendCommand(cmd);
-        return cmd;
+      const matchIndex = normalized.lastIndexOf(phrase);
+      
+      if (matchIndex > highestIndex) {
+        highestIndex = matchIndex;
+        bestMatchCmd = cmd;
+      } else if (matchIndex === highestIndex && matchIndex !== -1) {
+        // If two phrases match at the exact same index (e.g., "go" vs "go forward")
+        // Choose the longer one to avoid partial overlaps overriding specific ones
+        const currentBestPhraseLengths = Object.keys(VOICE_COMMAND_MAP)
+          .filter(k => VOICE_COMMAND_MAP[k] === bestMatchCmd)
+          .map(k => k.length);
+        const currentBestLength = Math.max(...currentBestPhraseLengths);
+        
+        if (phrase.length > currentBestLength) {
+          bestMatchCmd = cmd;
+        }
       }
     }
 
-    console.warn(`[Voice] Unrecognized command: "${spokenText}"`);
+    if (bestMatchCmd) {
+      if (bestMatchCmd !== this.lastSentCommand) {
+        await this.sendCommand(bestMatchCmd);
+      }
+      return bestMatchCmd;
+    }
+
     return null;
   }
 }
