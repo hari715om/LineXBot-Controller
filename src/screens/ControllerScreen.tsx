@@ -1,11 +1,3 @@
-/**
- * ControllerScreen
- *
- * Main robot controller screen.
- * Assembles ControlPad, SpeedSlider, ModeSwitch, and VoiceButton.
- * Shows connection status and provides a disconnect button.
- */
-
 import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
@@ -35,7 +27,6 @@ const ControllerScreen: React.FC<Props> = ({navigation}) => {
   useEffect(() => {
     setDeviceName(BluetoothService.getConnectedDeviceName() ?? 'Unknown');
 
-    // Verify connection is alive (handles hot-reload / stale state)
     BluetoothService.isConnected().then(alive => {
       if (!alive) {
         navigation.goBack();
@@ -46,11 +37,11 @@ const ControllerScreen: React.FC<Props> = ({navigation}) => {
       setConnectionStatus(status);
       if (status === 'disconnected') {
         Alert.alert(
-          'Disconnected',
-          'Connection to the robot was lost. Please reconnect.',
+          'CRITICAL: SIGNAL LOST',
+          'Telemetry connection to the drone was severed. Please reconnect.',
           [
             {
-              text: 'OK',
+              text: 'ACKNOWLEDGE',
               onPress: () => navigation.goBack(),
             },
           ],
@@ -63,12 +54,12 @@ const ControllerScreen: React.FC<Props> = ({navigation}) => {
 
   const handleDisconnect = useCallback(async () => {
     Alert.alert(
-      'Disconnect',
-      'Are you sure you want to disconnect from the robot?',
+      'TERMINATE CONNECTION',
+      'Are you sure you want to disconnect telemetry from the active drone?',
       [
-        {text: 'Cancel', style: 'cancel'},
+        {text: 'CANCEL', style: 'cancel'},
         {
-          text: 'Disconnect',
+          text: 'TERMINATE',
           style: 'destructive',
           onPress: async () => {
             await BluetoothService.disconnect();
@@ -79,73 +70,78 @@ const ControllerScreen: React.FC<Props> = ({navigation}) => {
     );
   }, [navigation]);
 
-  const statusColor =
-    connectionStatus === 'connected'
-      ? '#5BFFB0'
-      : connectionStatus === 'connecting'
-        ? '#FFD55B'
-        : '#FF5B5B';
+  const isConnected = connectionStatus === 'connected';
+  const statusColor = isConnected
+    ? '#2ff801' // secondary_container (green glow)
+    : connectionStatus === 'connecting'
+      ? '#00f0ff' // primary_container
+      : '#ffb4ab'; // error
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#060D1F" />
+      <StatusBar barStyle="light-content" backgroundColor="#0e1320" />
 
-      {/* Header bar */}
+      {/* Header Bar */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>LineX Bot</Text>
-          <View style={styles.connectionInfo}>
+          <Text style={styles.headerTitle}>PORTRAIT COMMAND CENTER</Text>
+          <View style={styles.connectionBlock}>
             <View
-              style={[styles.statusDot, {backgroundColor: statusColor}]}
+              style={[
+                styles.statusDot,
+                {backgroundColor: statusColor, shadowColor: statusColor},
+              ]}
             />
-            <Text style={styles.deviceName}>{deviceName}</Text>
+            <Text style={styles.deviceName}>TARGET: {deviceName.toUpperCase()}</Text>
           </View>
         </View>
         <TouchableOpacity
           style={styles.disconnectBtn}
           onPress={handleDisconnect}
           activeOpacity={0.7}>
-          <Text style={styles.disconnectText}>✕</Text>
+          <Text style={styles.disconnectIcon}>✕</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Scrollable controller area */}
+      {/* Asymmetric Content Area */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        {/* Control Pad */}
-        <ControlPad />
-
-        {/* Joystick Mode Button */}
+        
+        {/* Module: Joystick Entry */}
         <TouchableOpacity
           style={styles.joystickModeBtn}
           onPress={() => navigation.navigate('Joystick')}
           activeOpacity={0.7}>
           <Text style={styles.joystickModeIcon}>🕹️</Text>
-          <Text style={styles.joystickModeText}>JOYSTICK MODE</Text>
+          <Text style={styles.joystickModeText}>INITIATE LANDSCAPE JOYSTICK OVERRIDE</Text>
           <Text style={styles.joystickModeArrow}>→</Text>
         </TouchableOpacity>
 
-        {/* Divider */}
-        <View style={styles.divider} />
+        <View style={styles.moduleSpacer} />
 
-        {/* Speed Selector */}
-        <SpeedSlider />
+        {/* Module: Main Control Pad */}
+        <View style={styles.hudModule}>
+          <ControlPad />
+        </View>
 
-        {/* Divider */}
-        <View style={styles.divider} />
+        <View style={styles.moduleSpacer} />
 
-        {/* Mode Switch */}
-        <ModeSwitch />
+        {/* Module: Speed & Mode Specs */}
+        <View style={styles.hudModule}>
+          <SpeedSlider />
+          <View style={styles.innerSpacer} />
+          <ModeSwitch />
+        </View>
 
-        {/* Divider */}
-        <View style={styles.divider} />
+        <View style={styles.moduleSpacer} />
 
-        {/* Voice Button */}
-        <VoiceButton />
+        {/* Module: Voice Command */}
+        <View style={styles.hudModule}>
+          <VoiceButton />
+        </View>
 
-        {/* Bottom spacer */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
     </View>
@@ -155,103 +151,123 @@ const ControllerScreen: React.FC<Props> = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#060D1F',
+    backgroundColor: '#0e1320', // surface void
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 16,
-    backgroundColor: '#0A1530',
+    paddingHorizontal: 24,
+    paddingTop: 54,
+    paddingBottom: 20,
+    backgroundColor: '#161b28', // surface_container_low
     borderBottomWidth: 1,
-    borderBottomColor: '#1A2A50',
+    borderBottomColor: 'rgba(59, 73, 75, 0.4)', // outline_variant
   },
   headerLeft: {
     flex: 1,
+    paddingRight: 20,
   },
   headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '900',
+    color: '#00f0ff', // primary_container neon
+    fontSize: 16,
+    fontFamily: 'Space Grotesk',
+    fontWeight: '800',
     letterSpacing: 2,
+    marginBottom: 8,
   },
-  connectionInfo: {
+  connectionBlock: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    backgroundColor: '#0e1320',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 73, 75, 0.2)',
   },
   statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    marginRight: 6,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 8,
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   deviceName: {
-    color: '#6B7FAA',
-    fontSize: 12,
-    fontWeight: '600',
+    color: '#b9cacb', // on_surface_variant
+    fontSize: 10,
+    fontFamily: 'Manrope',
+    fontWeight: '700',
+    letterSpacing: 1.5,
   },
   disconnectBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#2A1A1A',
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(147, 0, 10, 0.1)', // error_container transparent
     borderWidth: 1,
-    borderColor: '#5A2A2A',
+    borderColor: 'rgba(255, 180, 171, 0.3)', // error ghost border
     justifyContent: 'center',
     alignItems: 'center',
   },
-  disconnectText: {
-    color: '#FF5B5B',
-    fontSize: 16,
-    fontWeight: '700',
+  disconnectIcon: {
+    color: '#ffb4ab',
+    fontSize: 14,
+    fontWeight: '900',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#1A2A50',
-    marginVertical: 8,
-    marginHorizontal: 20,
-  },
-  bottomSpacer: {
-    height: 40,
+    paddingHorizontal: 24,
+    paddingTop: 24,
   },
   joystickModeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0D1B3A',
+    backgroundColor: 'rgba(0, 240, 255, 0.05)',
     borderWidth: 1,
-    borderColor: '#5B9EFF',
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    marginTop: 12,
-    marginBottom: 4,
+    borderColor: '#00f0ff',
+    borderRadius: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
   },
   joystickModeIcon: {
-    fontSize: 18,
-    marginRight: 8,
+    fontSize: 20,
+    marginRight: 10,
   },
   joystickModeText: {
-    color: '#5B9EFF',
-    fontSize: 13,
+    color: '#dbfcff',
+    fontSize: 11,
+    fontFamily: 'Space Grotesk',
     fontWeight: '800',
-    letterSpacing: 2,
+    letterSpacing: 1.5,
     flex: 1,
   },
   joystickModeArrow: {
-    color: '#5B9EFF',
+    color: '#00f0ff',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
+  },
+  hudModule: {
+    backgroundColor: 'rgba(47, 53, 66, 0.15)', // Glassmorphism layer
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 73, 75, 0.2)',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+  },
+  moduleSpacer: {
+    height: 24, // Strict No-line rule, section via whitespace
+  },
+  innerSpacer: {
+    height: 16,
+  },
+  bottomSpacer: {
+    height: 60,
   },
 });
 

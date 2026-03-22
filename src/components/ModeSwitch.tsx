@@ -1,9 +1,3 @@
-/**
- * ModeSwitch Component
- *
- * Toggle between Auto (line follower) and Manual (Bluetooth control) modes.
- */
-
 import React, {useState, useCallback} from 'react';
 import {View, TouchableOpacity, Text, StyleSheet} from 'react-native';
 import RobotCommandService from '../services/RobotCommandService';
@@ -24,15 +18,14 @@ const ModeSwitch: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>MODE</Text>
+      <Text style={styles.sectionTitle}>OPERATIONAL MODE</Text>
 
       <View style={styles.switchContainer}>
-        {/* Manual mode button */}
         <TouchableOpacity
           style={[
             styles.modeBtn,
             styles.modeBtnLeft,
-            activeMode === 'manual' && styles.modeBtnActiveManual,
+            activeMode === 'manual' && styles.modeBtnActive,
           ]}
           onPress={handleManualPress}
           activeOpacity={0.7}>
@@ -44,10 +37,10 @@ const ModeSwitch: React.FC = () => {
             ]}>
             MANUAL
           </Text>
-          <Text style={styles.modeSubtitle}>BT Control</Text>
+          <Text style={styles.modeSubtitle}>TACTICAL OVERRIDE</Text>
+          {activeMode === 'manual' && <View style={styles.activeGlow} />}
         </TouchableOpacity>
 
-        {/* Auto mode button */}
         <TouchableOpacity
           style={[
             styles.modeBtn,
@@ -64,7 +57,8 @@ const ModeSwitch: React.FC = () => {
             ]}>
             AUTO
           </Text>
-          <Text style={styles.modeSubtitle}>Line Follow</Text>
+          <Text style={styles.modeSubtitle}>AI SUPERVISION</Text>
+          {activeMode === 'auto' && <View style={styles.activeGlowAuto} />}
         </TouchableOpacity>
       </View>
     </View>
@@ -74,70 +68,99 @@ const ModeSwitch: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    width: '100%',
   },
   sectionTitle: {
-    color: '#8B9CC7',
-    fontSize: 12,
+    color: '#849495',
+    fontSize: 10,
+    fontFamily: 'Space Grotesk',
     fontWeight: '700',
     letterSpacing: 2,
-    marginBottom: 12,
+    marginBottom: 16,
+    alignSelf: 'flex-start',
   },
   switchContainer: {
     flexDirection: 'row',
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#2E4A8A',
+    backgroundColor: '#161b28', // surface_container_low
+    width: '100%',
+    padding: 4,
   },
   modeBtn: {
     flex: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: 18,
     alignItems: 'center',
-    backgroundColor: '#0D1B3A',
+    backgroundColor: 'transparent',
+    borderRadius: 12,
+    position: 'relative',
   },
   modeBtnLeft: {
-    borderTopLeftRadius: 13,
-    borderBottomLeftRadius: 13,
-    borderRightWidth: 0.5,
-    borderRightColor: '#2E4A8A',
+    marginRight: 2,
   },
   modeBtnRight: {
-    borderTopRightRadius: 13,
-    borderBottomRightRadius: 13,
-    borderLeftWidth: 0.5,
-    borderLeftColor: '#2E4A8A',
+    marginLeft: 2,
   },
-  modeBtnActiveManual: {
-    backgroundColor: '#1A2A50',
-    borderColor: '#5B9EFF',
+  modeBtnActive: {
+    backgroundColor: '#252a37', // surface_container_high
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.3)',
   },
   modeBtnActiveAuto: {
-    backgroundColor: '#1A3A28',
-    borderColor: '#5BFFB0',
+    backgroundColor: '#252a37',
+    borderWidth: 1,
+    borderColor: 'rgba(47, 248, 1, 0.3)', // secondary_container
   },
   modeIcon: {
-    fontSize: 20,
-    marginBottom: 4,
+    fontSize: 22,
+    marginBottom: 6,
   },
   modeLabel: {
-    color: '#4A6090',
-    fontSize: 13,
+    color: '#b9cacb',
+    fontSize: 14,
+    fontFamily: 'Space Grotesk',
     fontWeight: '800',
-    letterSpacing: 1.5,
+    letterSpacing: 2,
+    marginBottom: 2,
   },
   modeLabelActive: {
-    color: '#5B9EFF',
+    color: '#00f0ff', // primary_container (manual)
   },
   modeLabelActiveAuto: {
-    color: '#5BFFB0',
+    color: '#2ff801', // secondary_container (auto)
   },
   modeSubtitle: {
-    color: '#3A4A6A',
-    fontSize: 10,
-    fontWeight: '500',
-    marginTop: 2,
+    color: '#849495',
+    fontSize: 9,
+    fontFamily: 'Manrope',
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  activeGlow: {
+    position: 'absolute',
+    bottom: -10,
+    width: 40,
+    height: 10,
+    backgroundColor: '#00f0ff',
+    shadowColor: '#00f0ff',
+    shadowRadius: 15,
+    shadowOpacity: 1,
+    elevation: 10,
+    borderRadius: 10,
+  },
+  activeGlowAuto: {
+    position: 'absolute',
+    bottom: -10,
+    width: 40,
+    height: 10,
+    backgroundColor: '#2ff801',
+    shadowColor: '#2ff801',
+    shadowRadius: 15,
+    shadowOpacity: 1,
+    elevation: 10,
+    borderRadius: 10,
   },
 });
 

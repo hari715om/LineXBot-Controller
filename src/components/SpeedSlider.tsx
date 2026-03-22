@@ -1,19 +1,12 @@
-/**
- * SpeedSlider Component
- *
- * 3-step segmented speed selector.
- * Sends '1', '2', or '3' to the robot when tapped.
- */
-
 import React, {useState, useCallback} from 'react';
 import {View, TouchableOpacity, Text, StyleSheet} from 'react-native';
 import RobotCommandService from '../services/RobotCommandService';
 import {CMD_SPEED_1, CMD_SPEED_2, CMD_SPEED_3} from '../constants/commands';
 
 const SPEEDS = [
-  {label: 'SLOW', value: CMD_SPEED_1, level: 1},
-  {label: 'MED', value: CMD_SPEED_2, level: 2},
-  {label: 'FAST', value: CMD_SPEED_3, level: 3},
+  {label: 'LEVEL 1', value: CMD_SPEED_1, level: 1},
+  {label: 'LEVEL 2', value: CMD_SPEED_2, level: 2},
+  {label: 'LEVEL 3', value: CMD_SPEED_3, level: 3},
 ];
 
 const SpeedSlider: React.FC = () => {
@@ -26,7 +19,7 @@ const SpeedSlider: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>SPEED</Text>
+      <Text style={styles.sectionTitle}>VELOCITY METRICS</Text>
 
       <View style={styles.segmentContainer}>
         {SPEEDS.map(speed => {
@@ -37,28 +30,14 @@ const SpeedSlider: React.FC = () => {
               style={[
                 styles.segment,
                 isActive && styles.segmentActive,
-                speed.level === 1 && styles.segmentFirst,
-                speed.level === 3 && styles.segmentLast,
               ]}
               onPress={() => handleSpeedPress(speed)}
               activeOpacity={0.7}>
-              {/* Speed bars indicator */}
-              <View style={styles.barsContainer}>
-                {[1, 2, 3].map(bar => (
-                  <View
-                    key={bar}
-                    style={[
-                      styles.bar,
-                      {height: 6 + bar * 5},
-                      bar <= speed.level
-                        ? isActive
-                          ? styles.barActiveHighlight
-                          : styles.barFilled
-                        : styles.barEmpty,
-                    ]}
-                  />
-                ))}
+              
+              <View style={styles.indicatorArea}>
+                <View style={[styles.glowDot, isActive && styles.glowDotActive]} />
               </View>
+              
               <Text
                 style={[
                   styles.segmentLabel,
@@ -77,69 +56,67 @@ const SpeedSlider: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    width: '100%',
   },
   sectionTitle: {
-    color: '#8B9CC7',
-    fontSize: 12,
+    color: '#849495',
+    fontSize: 10,
+    fontFamily: 'Space Grotesk',
     fontWeight: '700',
     letterSpacing: 2,
-    marginBottom: 12,
+    marginBottom: 16,
+    alignSelf: 'flex-start',
   },
   segmentContainer: {
     flexDirection: 'row',
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#2E4A8A',
+    width: '100%',
+    gap: 8,
   },
   segment: {
     flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0D1B3A',
-  },
-  segmentFirst: {
-    borderTopLeftRadius: 13,
-    borderBottomLeftRadius: 13,
-  },
-  segmentLast: {
-    borderTopRightRadius: 13,
-    borderBottomRightRadius: 13,
+    paddingVertical: 16,
+    alignItems: 'flex-start',
+    backgroundColor: '#161b28', // surface_container_low
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    paddingHorizontal: 16,
   },
   segmentActive: {
-    backgroundColor: '#1A2A50',
+    backgroundColor: '#252a37', // surface_container_high
+    borderColor: 'rgba(0, 240, 255, 0.4)', // inset neon border
+    shadowColor: '#00dbe9',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  indicatorArea: {
+    marginBottom: 10,
+  },
+  glowDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#2f3542', // surface_variant
+  },
+  glowDotActive: {
+    backgroundColor: '#00f0ff',
+    shadowColor: '#00f0ff',
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 5,
   },
   segmentLabel: {
-    color: '#4A6090',
+    color: '#b9cacb',
     fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-    marginTop: 6,
+    fontFamily: 'Space Grotesk',
+    fontWeight: '800',
+    letterSpacing: 1.5,
   },
   segmentLabelActive: {
-    color: '#5B9EFF',
-  },
-  barsContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    height: 22,
-    gap: 3,
-  },
-  bar: {
-    width: 6,
-    borderRadius: 2,
-  },
-  barFilled: {
-    backgroundColor: '#2E4A8A',
-  },
-  barActiveHighlight: {
-    backgroundColor: '#5B9EFF',
-  },
-  barEmpty: {
-    backgroundColor: '#1A2030',
+    color: '#dbfcff', // primary
   },
 });
 

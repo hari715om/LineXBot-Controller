@@ -1,14 +1,3 @@
-/**
- * BluetoothScreen
- *
- * Initial screen of the app. Handles:
- * - Checking Bluetooth is enabled
- * - Requesting permissions
- * - Listing paired devices
- * - Connecting to a selected device (HC-05)
- * - Navigating to ControllerScreen on success
- */
-
 import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
@@ -117,19 +106,21 @@ const BluetoothScreen: React.FC<Props> = ({navigation}) => {
         <View style={styles.deviceInfo}>
           <Text style={styles.deviceIcon}>{isHC05 ? '🤖' : '📱'}</Text>
           <View style={styles.deviceText}>
-            <Text style={styles.deviceName}>
-              {item.name || 'Unknown Device'}
+            <Text style={[styles.deviceName, isHC05 && styles.deviceNameHighlight]}>
+              {item.name || 'Unknown Target'}
             </Text>
-            <Text style={styles.deviceId}>{item.id}</Text>
+            <Text style={styles.deviceId}>ID: {item.id}</Text>
             {isHC05 && (
-              <Text style={styles.deviceBadge}>← LineX Bot</Text>
+              <Text style={styles.deviceBadge}>[ PRIMARY TARGET IDENTIFIED ]</Text>
             )}
           </View>
         </View>
         {isConnecting ? (
-          <ActivityIndicator color="#5B9EFF" size="small" />
+          <ActivityIndicator color="#00f0ff" size="small" />
         ) : (
-          <Text style={styles.connectArrow}>→</Text>
+          <Text style={[styles.connectArrow, isHC05 && styles.connectArrowHighlight]}>
+            CONNECT →
+          </Text>
         )}
       </TouchableOpacity>
     );
@@ -137,13 +128,12 @@ const BluetoothScreen: React.FC<Props> = ({navigation}) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#060D1F" />
+      <StatusBar barStyle="light-content" backgroundColor="#0e1320" />
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.logo}>⚡</Text>
-        <Text style={styles.title}>LineX Bot</Text>
-        <Text style={styles.subtitle}>CONTROLLER</Text>
+        <Text style={styles.title}>RADAR SCAN</Text>
+        <Text style={styles.subtitle}>LINE-X BOT TELEMETRY APP</Text>
       </View>
 
       {/* Bluetooth Status */}
@@ -154,36 +144,36 @@ const BluetoothScreen: React.FC<Props> = ({navigation}) => {
             btEnabled ? styles.statusDotOn : styles.statusDotOff,
           ]}
         />
-        <Text style={styles.statusText}>
-          Bluetooth {btEnabled ? 'Enabled' : 'Disabled'}
+        <Text style={[styles.statusText, !btEnabled && styles.statusTextHighContrast]}>
+          BLUETOOTH {btEnabled ? 'ACTIVE' : 'OFFLINE'}
         </Text>
       </View>
 
       {/* Device List */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>PAIRED DEVICES</Text>
+          <Text style={styles.sectionTitle}>DETECTED TARGETS</Text>
           <TouchableOpacity
             style={styles.refreshBtn}
             onPress={scanDevices}
             disabled={scanning}>
             <Text style={styles.refreshText}>
-              {scanning ? '...' : '↻ Refresh'}
+              {scanning ? 'SCANNING...' : '↻ RESCAN'}
             </Text>
           </TouchableOpacity>
         </View>
 
         {scanning ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator color="#5B9EFF" size="large" />
-            <Text style={styles.loadingText}>Scanning devices...</Text>
+            <ActivityIndicator color="#00f0ff" size="large" />
+            <Text style={styles.loadingText}>SWEEPING FREQUENCIES...</Text>
           </View>
         ) : devices.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📡</Text>
-            <Text style={styles.emptyText}>No paired devices found</Text>
+            <Text style={styles.emptyText}>NO SIGNALS DETECTED</Text>
             <Text style={styles.emptyHint}>
-              Pair your HC-05 module in{'\n'}Android Bluetooth settings first
+              Ensure HC-05 module is powered on and paired to Android System via Settings.
             </Text>
           </View>
         ) : (
@@ -200,7 +190,7 @@ const BluetoothScreen: React.FC<Props> = ({navigation}) => {
       {/* Footer Info */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Make sure HC-05 is powered on and paired
+          SECURE CONNECTION PROTOCOL • DEEP SPACE HUD
         </Text>
       </View>
     </View>
@@ -210,103 +200,124 @@ const BluetoothScreen: React.FC<Props> = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#060D1F',
+    backgroundColor: '#0e1320', // surface
   },
   header: {
-    alignItems: 'center',
     paddingTop: 50,
-    paddingBottom: 20,
-  },
-  logo: {
-    fontSize: 40,
-    marginBottom: 4,
+    paddingBottom: 24,
+    paddingHorizontal: 24,
   },
   title: {
-    color: '#FFFFFF',
+    color: '#dee2f4',
     fontSize: 28,
+    fontFamily: 'Space Grotesk',
     fontWeight: '900',
-    letterSpacing: 3,
+    letterSpacing: 4,
   },
   subtitle: {
-    color: '#5B9EFF',
-    fontSize: 12,
+    color: '#00f0ff',
+    fontSize: 10,
+    fontFamily: 'Manrope',
     fontWeight: '700',
-    letterSpacing: 6,
-    marginTop: 2,
+    letterSpacing: 4,
+    marginTop: 6,
   },
   statusBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
     marginHorizontal: 24,
-    borderRadius: 10,
-    backgroundColor: '#0D1B3A',
+    borderRadius: 8,
+    backgroundColor: '#161b28', // surface_container_low
     borderWidth: 1,
-    borderColor: '#1A2A50',
+    borderColor: 'rgba(59, 73, 75, 0.3)',
   },
   statusDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginRight: 8,
+    marginRight: 10,
   },
   statusDotOn: {
-    backgroundColor: '#5BFFB0',
+    backgroundColor: '#2ff801', // secondary_container
+    shadowColor: '#2ff801',
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 4,
   },
   statusDotOff: {
-    backgroundColor: '#FF5B5B',
+    backgroundColor: '#ffb4ab', // error
+    shadowColor: '#ffb4ab',
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 4,
   },
   statusText: {
-    color: '#8B9CC7',
-    fontSize: 13,
-    fontWeight: '600',
+    color: '#b9cacb',
+    fontSize: 12,
+    fontFamily: 'Space Grotesk',
+    fontWeight: '700',
+    letterSpacing: 1.5,
+  },
+  statusTextHighContrast: {
+    color: '#ffb4ab', // error
+    fontWeight: '900',
   },
   section: {
     flex: 1,
-    marginTop: 20,
-    paddingHorizontal: 20,
+    marginTop: 24,
+    paddingHorizontal: 24,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   sectionTitle: {
-    color: '#8B9CC7',
-    fontSize: 12,
+    color: '#849495',
+    fontSize: 10,
+    fontFamily: 'Space Grotesk',
     fontWeight: '700',
     letterSpacing: 2,
   },
   refreshBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#1A2A50',
+    borderRadius: 6,
+    backgroundColor: 'rgba(0, 240, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.3)',
   },
   refreshText: {
-    color: '#5B9EFF',
-    fontSize: 12,
-    fontWeight: '600',
+    color: '#00f0ff',
+    fontSize: 10,
+    fontFamily: 'Space Grotesk',
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   listContent: {
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
   deviceCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#0D1B3A',
-    borderRadius: 14,
+    backgroundColor: '#1a1f2c', // surface_container
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#1A2A50',
-    padding: 16,
-    marginBottom: 10,
+    borderColor: 'rgba(59, 73, 75, 0.3)',
+    padding: 18,
+    marginBottom: 12,
   },
   deviceCardHighlight: {
-    borderColor: '#2E8A6A',
-    backgroundColor: '#0D2A1F',
+    backgroundColor: '#252a37', // surface_container_high
+    borderColor: '#00f0ff', // primary_container
+    shadowColor: '#00f0ff',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 6,
   },
   deviceInfo: {
     flexDirection: 'row',
@@ -315,34 +326,46 @@ const styles = StyleSheet.create({
   },
   deviceIcon: {
     fontSize: 24,
-    marginRight: 14,
+    marginRight: 16,
+    opacity: 0.8,
   },
   deviceText: {
     flex: 1,
   },
   deviceName: {
-    color: '#FFFFFF',
-    fontSize: 15,
+    color: '#dee2f4',
+    fontSize: 16,
+    fontFamily: 'Space Grotesk',
     fontWeight: '700',
+  },
+  deviceNameHighlight: {
+    color: '#dbfcff',
   },
   deviceId: {
-    color: '#4A6090',
-    fontSize: 11,
+    color: '#849495',
+    fontSize: 10,
+    fontFamily: 'Manrope',
     fontWeight: '500',
-    marginTop: 2,
-    fontFamily: Platform.OS === 'android' ? 'monospace' : 'Courier',
+    marginTop: 4,
+    letterSpacing: 1,
   },
   deviceBadge: {
-    color: '#5BFFB0',
-    fontSize: 11,
-    fontWeight: '700',
-    marginTop: 4,
+    color: '#2ff801', // secondary_container
+    fontSize: 9,
+    fontFamily: 'Space Grotesk',
+    fontWeight: '800',
+    marginTop: 8,
+    letterSpacing: 1.5,
   },
   connectArrow: {
-    color: '#5B9EFF',
-    fontSize: 20,
+    color: '#849495',
+    fontSize: 10,
+    fontFamily: 'Space Grotesk',
     fontWeight: '700',
-    marginLeft: 10,
+    letterSpacing: 1,
+  },
+  connectArrowHighlight: {
+    color: '#00f0ff',
   },
   loadingContainer: {
     flex: 1,
@@ -350,9 +373,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    color: '#5A6A8A',
-    fontSize: 14,
-    marginTop: 12,
+    color: '#00f0ff',
+    fontSize: 12,
+    fontFamily: 'Space Grotesk',
+    fontWeight: '600',
+    marginTop: 16,
+    letterSpacing: 2,
   },
   emptyContainer: {
     flex: 1,
@@ -361,31 +387,36 @@ const styles = StyleSheet.create({
   },
   emptyIcon: {
     fontSize: 48,
-    marginBottom: 14,
+    marginBottom: 16,
+    opacity: 0.4,
   },
   emptyText: {
-    color: '#8B9CC7',
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#b9cacb',
+    fontSize: 14,
+    fontFamily: 'Space Grotesk',
+    fontWeight: '700',
+    letterSpacing: 1.5,
   },
   emptyHint: {
-    color: '#4A6090',
-    fontSize: 13,
+    color: '#849495',
+    fontSize: 11,
+    fontFamily: 'Manrope',
     textAlign: 'center',
     marginTop: 8,
-    lineHeight: 20,
+    lineHeight: 18,
+    marginHorizontal: 30,
   },
   footer: {
     alignItems: 'center',
     paddingVertical: 16,
-    paddingBottom: 30,
   },
   footerText: {
-    color: '#3A4A6A',
-    fontSize: 12,
-    fontWeight: '500',
+    color: 'rgba(59, 73, 75, 0.6)',
+    fontSize: 8,
+    fontFamily: 'Space Grotesk',
+    fontWeight: '700',
+    letterSpacing: 2,
   },
 });
-
 
 export default BluetoothScreen;

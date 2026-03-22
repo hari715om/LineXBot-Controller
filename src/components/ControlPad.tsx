@@ -1,12 +1,3 @@
-/**
- * ControlPad Component
- *
- * D-pad style directional controller with Forward, Backward,
- * Left, Right, Stop, and Spin buttons in a cross layout.
- *
- * Directional buttons send the command on press and STOP on release.
- */
-
 import React, {useCallback} from 'react';
 import {
   View,
@@ -44,12 +35,9 @@ const ControlPad: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* Title */}
-      <Text style={styles.sectionTitle}>CONTROLS</Text>
+      <Text style={styles.sectionTitle}>TACTICAL CONTROLS</Text>
 
-      {/* D-Pad */}
       <View style={styles.dpadContainer}>
-        {/* Top row — Forward */}
         <View style={styles.dpadRow}>
           <DirectionButton
             label="▲"
@@ -57,11 +45,9 @@ const ControlPad: React.FC = () => {
             command={CMD_FORWARD}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
-            style={styles.btnUp}
           />
         </View>
 
-        {/* Middle row — Left, Stop, Right */}
         <View style={styles.dpadRow}>
           <DirectionButton
             label="◄"
@@ -69,14 +55,13 @@ const ControlPad: React.FC = () => {
             command={CMD_RIGHT}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
-            style={styles.btnSide}
           />
           <TouchableOpacity
             style={[styles.dpadBtn, styles.btnCenter]}
             onPress={handleStop}
             activeOpacity={0.7}>
             <Text style={styles.stopIcon}>■</Text>
-            <Text style={styles.btnSubtitle}>STOP</Text>
+            <Text style={styles.btnSubtitleCenter}>Halt</Text>
           </TouchableOpacity>
           <DirectionButton
             label="►"
@@ -84,11 +69,9 @@ const ControlPad: React.FC = () => {
             command={CMD_LEFT}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
-            style={styles.btnSide}
           />
         </View>
 
-        {/* Bottom row — Backward */}
         <View style={styles.dpadRow}>
           <DirectionButton
             label="▼"
@@ -96,24 +79,20 @@ const ControlPad: React.FC = () => {
             command={CMD_BACKWARD}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
-            style={styles.btnDown}
           />
         </View>
       </View>
 
-      {/* Spin button */}
       <TouchableOpacity
         style={styles.spinBtn}
         onPress={handleSpin}
         activeOpacity={0.7}>
         <Text style={styles.spinIcon}>↻</Text>
-        <Text style={styles.spinLabel}>SPIN 360°</Text>
+        <Text style={styles.spinLabel}>INITIATE SPIN 360°</Text>
       </TouchableOpacity>
     </View>
   );
 };
-
-// ---- Sub-component for directional buttons ----
 
 interface DirectionButtonProps {
   label: string;
@@ -142,22 +121,29 @@ const DirectionButton: React.FC<DirectionButtonProps> = ({
   </TouchableOpacity>
 );
 
-// ---- Styles ----
-
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 14,
+    backgroundColor: 'transparent',
   },
   sectionTitle: {
-    color: '#8B9CC7',
-    fontSize: 12,
+    color: '#849495',
+    fontSize: 10,
+    fontFamily: 'Space Grotesk',
     fontWeight: '700',
     letterSpacing: 2,
-    marginBottom: 16,
+    marginBottom: 20,
+    alignSelf: 'flex-start',
+    marginLeft: 20,
   },
   dpadContainer: {
     alignItems: 'center',
+    backgroundColor: '#161b28',
+    padding: 16,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 73, 75, 0.4)',
   },
   dpadRow: {
     flexDirection: 'row',
@@ -165,73 +151,83 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dpadBtn: {
-    width: 76,
-    height: 76,
+    width: 88,
+    height: 88,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    margin: 4,
-  },
-  btnUp: {
-    backgroundColor: '#1A2A50',
+    margin: 6,
+    backgroundColor: '#252a37',
     borderWidth: 1,
-    borderColor: '#2E4A8A',
-  },
-  btnDown: {
-    backgroundColor: '#1A2A50',
-    borderWidth: 1,
-    borderColor: '#2E4A8A',
-  },
-  btnSide: {
-    backgroundColor: '#1A2A50',
-    borderWidth: 1,
-    borderColor: '#2E4A8A',
+    borderColor: 'rgba(59, 73, 75, 0.2)',
+    shadowColor: '#00dbe9',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
   },
   btnCenter: {
-    backgroundColor: '#4A1A1A',
-    borderWidth: 1,
-    borderColor: '#8B3A3A',
+    backgroundColor: 'rgba(175, 50, 0, 0.15)',
+    borderColor: 'rgba(255, 181, 158, 0.4)',
+    shadowColor: '#af3200',
+    shadowOpacity: 0.4,
+    shadowRadius: 15,
   },
   btnArrow: {
-    color: '#5B9EFF',
-    fontSize: 28,
-    fontWeight: '700',
+    color: '#dbfcff',
+    fontSize: 32,
+    fontWeight: '600',
   },
   stopIcon: {
-    color: '#FF5B5B',
-    fontSize: 24,
-    fontWeight: '700',
+    color: '#ffb59e',
+    fontSize: 28,
+    fontWeight: '800',
   },
   btnSubtitle: {
-    color: '#6B7FAA',
-    fontSize: 9,
+    color: '#b9cacb',
+    fontSize: 10,
+    fontFamily: 'Manrope',
     fontWeight: '600',
     marginTop: 2,
-    letterSpacing: 1,
+    letterSpacing: 1.5,
+  },
+  btnSubtitleCenter: {
+    color: '#ffb59e',
+    fontSize: 10,
+    fontFamily: 'Manrope',
+    fontWeight: '700',
+    marginTop: 2,
+    letterSpacing: 1.5,
   },
   spinBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1A2A50',
+    backgroundColor: 'rgba(0, 240, 255, 0.1)',
     borderWidth: 1,
-    borderColor: '#2E8A6A',
-    borderRadius: 14,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    marginTop: 16,
+    borderColor: 'rgba(0, 240, 255, 0.5)', 
+    borderRadius: 12,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    marginTop: 24,
+    shadowColor: '#00f0ff',
+    shadowOffset: {width: 0, height: 0},
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   spinIcon: {
-    color: '#5BFFB0',
+    color: '#00f0ff',
     fontSize: 22,
     fontWeight: '700',
-    marginRight: 8,
+    marginRight: 10,
   },
   spinLabel: {
-    color: '#5BFFB0',
-    fontSize: 14,
+    color: '#00f0ff',
+    fontSize: 12,
+    fontFamily: 'Space Grotesk',
     fontWeight: '700',
-    letterSpacing: 1,
+    letterSpacing: 2,
   },
 });
 

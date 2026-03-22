@@ -1,11 +1,3 @@
-/**
- * VoiceButton Component
- *
- * Microphone button that uses @react-native-voice/voice
- * for speech-to-text, then maps the recognized text to a
- * robot command via RobotCommandService.
- */
-
 import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
@@ -30,7 +22,6 @@ const VoiceButton: React.FC = () => {
   const [error, setError] = useState('');
   const [pulseAnim] = useState(new Animated.Value(1));
 
-  // Request microphone permission (Android)
   const requestMicPermission = useCallback(async (): Promise<boolean> => {
     if (Platform.OS !== 'android') {
       return true;
@@ -45,7 +36,6 @@ const VoiceButton: React.FC = () => {
     }
   }, []);
 
-  // Set up Voice event handlers
   useEffect(() => {
     const onSpeechResults = (e: SpeechResultsEvent) => {
       const text = e.value?.[0] ?? '';
@@ -72,10 +62,8 @@ const VoiceButton: React.FC = () => {
     return () => {
       Voice.destroy().then(Voice.removeAllListeners);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Process recognized text
   const processCommand = async (text: string) => {
     const cmd = await RobotCommandService.processVoiceCommand(text);
     if (cmd) {
@@ -87,18 +75,17 @@ const VoiceButton: React.FC = () => {
     }
   };
 
-  // Pulse animation while listening
   const startPulseAnimation = () => {
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.15,
-          duration: 600,
+          toValue: 1.25,
+          duration: 800,
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 600,
+          duration: 800,
           useNativeDriver: true,
         }),
       ]),
@@ -110,7 +97,6 @@ const VoiceButton: React.FC = () => {
     pulseAnim.setValue(1);
   };
 
-  // Toggle listening
   const toggleListening = async () => {
     if (isListening) {
       try {
@@ -123,7 +109,7 @@ const VoiceButton: React.FC = () => {
     } else {
       const hasPerm = await requestMicPermission();
       if (!hasPerm) {
-        setError('Microphone permission denied');
+        setError('MIC PERMISSION DENIED');
         return;
       }
 
@@ -137,7 +123,7 @@ const VoiceButton: React.FC = () => {
         await Voice.start('en-US');
       } catch (e) {
         console.error('[Voice] Start error:', e);
-        setError('Failed to start voice recognition');
+        setError('VOICE SYSTEM FAILURE');
         setIsListening(false);
         stopPulseAnimation();
       }
@@ -146,39 +132,39 @@ const VoiceButton: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>VOICE COMMAND</Text>
+      <Text style={styles.sectionTitle}>VOCAL OVERRIDE</Text>
 
-      {/* Microphone button */}
-      <Animated.View style={{transform: [{scale: pulseAnim}]}}>
+      <Animated.View style={[{transform: [{scale: pulseAnim}]}, isListening && styles.glowRing]}>
         <TouchableOpacity
           style={[styles.micBtn, isListening && styles.micBtnActive]}
           onPress={toggleListening}
           activeOpacity={0.7}>
-          <Text style={styles.micIcon}>{isListening ? '🔴' : '🎤'}</Text>
+          <Text style={[styles.micIcon, isListening && styles.micIconActive]}>
+            {isListening ? '🔴' : '🎤'}
+          </Text>
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Status text */}
-      <Text style={styles.statusText}>
-        {isListening
-          ? 'Listening...'
-          : 'Tap to speak'}
+      <Text style={[styles.statusText, isListening && styles.statusTextActive]}>
+        {isListening ? 'AWAITING COMMAND...' : 'SYSTEM IDLE'}
       </Text>
 
-      {/* Result display */}
       {spokenText ? (
         <View style={styles.resultContainer}>
-          <Text style={styles.spokenText}>"{spokenText}"</Text>
+          <Text style={styles.spokenText}>"{spokenText.toUpperCase()}"</Text>
           {matchedCommand ? (
             <View style={styles.matchBadge}>
-              <Text style={styles.matchText}>→ {matchedCommand}</Text>
+              <Text style={styles.matchText}>ACTION: {matchedCommand}</Text>
             </View>
           ) : null}
         </View>
       ) : null}
 
-      {/* Error display */}
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? (
+        <View style={styles.errorBadge}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -186,63 +172,116 @@ const VoiceButton: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    width: '100%',
   },
   sectionTitle: {
-    color: '#8B9CC7',
-    fontSize: 12,
+    color: '#849495',
+    fontSize: 10,
+    fontFamily: 'Space Grotesk',
     fontWeight: '700',
     letterSpacing: 2,
-    marginBottom: 14,
+    marginBottom: 20,
+    alignSelf: 'flex-start',
   },
   micBtn: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#1A2A50',
-    borderWidth: 2,
-    borderColor: '#2E4A8A',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#161b28', // surface_container_low
+    borderWidth: 1,
+    borderColor: 'rgba(59, 73, 75, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#00dbe9',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
   micBtnActive: {
-    backgroundColor: '#3A1A1A',
-    borderColor: '#FF5B5B',
+    backgroundColor: '#af3200', // on_tertiary_container / red glow base
+    borderColor: '#ffcfc1',
+    shadowColor: '#ffcfc1',
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  glowRing: {
+    borderRadius: 50,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 181, 158, 0.3)',
+    padding: 6,
   },
   micIcon: {
-    fontSize: 28,
+    fontSize: 32,
+    opacity: 0.6,
+  },
+  micIconActive: {
+    opacity: 1,
   },
   statusText: {
-    color: '#5A6A8A',
-    fontSize: 12,
-    marginTop: 8,
-    fontWeight: '500',
+    color: '#849495',
+    fontSize: 10,
+    fontFamily: 'Space Grotesk',
+    fontWeight: '700',
+    letterSpacing: 1.5,
+    marginTop: 16,
+  },
+  statusTextActive: {
+    color: '#ffb59e', // tertiary_fixed_dim
   },
   resultContainer: {
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 16,
+    backgroundColor: '#161b28',
+    padding: 12,
+    borderRadius: 8,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 73, 75, 0.2)',
   },
   spokenText: {
-    color: '#8B9CC7',
-    fontSize: 13,
-    fontStyle: 'italic',
+    color: '#dee2f4', // on_surface
+    fontSize: 14,
+    fontFamily: 'Manrope',
+    fontWeight: '500',
+    letterSpacing: 1,
+    marginBottom: 8,
   },
   matchBadge: {
-    backgroundColor: '#1A3A28',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    marginTop: 6,
+    backgroundColor: '#0f6d00', // on_secondary_container
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    width: '100%',
+    alignItems: 'center',
   },
   matchText: {
-    color: '#5BFFB0',
-    fontSize: 13,
+    color: '#79ff5b', // secondary_fixed
+    fontSize: 11,
+    fontFamily: 'Space Grotesk',
     fontWeight: '700',
+    letterSpacing: 1.5,
+  },
+  errorBadge: {
+    backgroundColor: 'rgba(147, 0, 10, 0.2)', // error_container transparent
+    borderWidth: 1,
+    borderColor: '#ffb4ab', // error
+    borderRadius: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginTop: 16,
+    width: '100%',
+    alignItems: 'center',
   },
   errorText: {
-    color: '#FF5B5B',
+    color: '#ffb4ab', // error (high contrast text)
     fontSize: 12,
-    marginTop: 8,
+    fontFamily: 'Space Grotesk',
+    fontWeight: '800',
+    letterSpacing: 1.5,
   },
 });
 

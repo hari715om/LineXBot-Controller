@@ -1,11 +1,3 @@
-/**
- * JoystickScreen
- *
- * Landscape-oriented advanced controller with a virtual joystick.
- * Left side: Joystick + direction label
- * Right side: Speed, Mode, connection info
- */
-
 import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
@@ -27,7 +19,6 @@ import {
   CMD_AUTO_MODE,
   CMD_MANUAL_MODE,
   CMD_SPIN,
-  COMMAND_LABELS,
 } from '../constants/commands';
 
 interface Props {
@@ -47,8 +38,8 @@ const JoystickScreen: React.FC<Props> = ({navigation}) => {
     const unsubscribe = BluetoothService.onStatusChange(status => {
       setConnectionStatus(status);
       if (status === 'disconnected') {
-        Alert.alert('Disconnected', 'Connection lost.', [
-          {text: 'OK', onPress: () => navigation.popToTop()},
+        Alert.alert('CRITICAL EVENT', 'Telemetry signal lost.', [
+          {text: 'ACKNOWLEDGE', onPress: () => navigation.popToTop()},
         ]);
       }
     });
@@ -59,15 +50,15 @@ const JoystickScreen: React.FC<Props> = ({navigation}) => {
     if (dir) {
       RobotCommandService.sendCommand(dir);
       const labels: Record<string, string> = {
-        F: '▲ FORWARD',
-        B: '▼ BACKWARD',
-        L: '► RIGHT',
-        R: '◄ LEFT',
+        F: 'TRANSLATING NORTH',
+        B: 'TRANSLATING SOUTH',
+        L: 'TRANSLATING EAST',
+        R: 'TRANSLATING WEST',
       };
       setActiveDirection(labels[dir] || dir);
     } else {
       RobotCommandService.stop();
-      setActiveDirection('IDLE');
+      setActiveDirection('IDLE (AWAITING INPUT)');
     }
   }, []);
 
@@ -85,120 +76,126 @@ const JoystickScreen: React.FC<Props> = ({navigation}) => {
 
   const handleSpin = useCallback(() => {
     RobotCommandService.sendCommand(CMD_SPIN);
-    setActiveDirection('↻ SPINNING');
-    setTimeout(() => setActiveDirection('IDLE'), 700);
+    setActiveDirection('INITIATING GYROSCOPE SPIN');
+    setTimeout(() => setActiveDirection('IDLE (AWAITING INPUT)'), 700);
   }, []);
 
-  const statusColor =
-    connectionStatus === 'connected'
-      ? '#5BFFB0'
-      : connectionStatus === 'connecting'
-        ? '#FFD55B'
-        : '#FF5B5B';
+  const isConnected = connectionStatus === 'connected';
+  const statusColor = isConnected
+    ? '#2ff801'
+    : connectionStatus === 'connecting'
+      ? '#00f0ff'
+      : '#ffb4ab';
 
   return (
     <View style={styles.container}>
       <StatusBar hidden />
 
-      {/* LEFT: Joystick Area */}
+      {/* LEFT: Tactical Joystick Area */}
       <View style={styles.leftPanel}>
-        {/* Direction label */}
-        <Text style={styles.directionLabel}>{activeDirection}</Text>
+        <View style={styles.telemetryOverlay}>
+          <Text style={styles.telemetryLabel}>VECTOR TRAJECTORY</Text>
+          <Text style={styles.directionData}>{activeDirection}</Text>
+        </View>
 
-        {/* Joystick */}
         <Joystick onDirectionChange={handleDirectionChange} />
 
-        {/* Spin button under joystick */}
         <TouchableOpacity
           style={styles.spinBtn}
           onPress={handleSpin}
           activeOpacity={0.7}>
           <Text style={styles.spinIcon}>↻</Text>
-          <Text style={styles.spinLabel}>SPIN</Text>
+          <Text style={styles.spinLabel}>OVERRIDE: 360° SPIN</Text>
         </TouchableOpacity>
       </View>
 
-      {/* RIGHT: Controls Panel */}
+      {/* RIGHT: Controls HUD */}
       <View style={styles.rightPanel}>
-        {/* Connection info */}
-        <View style={styles.connInfo}>
-          <View style={[styles.statusDot, {backgroundColor: statusColor}]} />
-          <Text style={styles.deviceText} numberOfLines={1}>
-            {deviceName}
-          </Text>
+        <View style={styles.rightHeader}>
+          <View style={styles.connInfo}>
+            <View style={[styles.statusDot, {backgroundColor: statusColor}]} />
+            <Text style={styles.deviceText} numberOfLines={1}>
+              {deviceName}
+            </Text>
+          </View>
+          
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}>
+            <Text style={styles.backText}>✕ ABORT</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Speed buttons */}
-        <Text style={styles.sectionLabel}>SPEED</Text>
-        <View style={styles.speedRow}>
-          {[
-            {l: 1, label: 'S', cmd: CMD_SPEED_1},
-            {l: 2, label: 'M', cmd: CMD_SPEED_2},
-            {l: 3, label: 'F', cmd: CMD_SPEED_3},
-          ].map(s => (
-            <TouchableOpacity
-              key={s.l}
-              style={[
-                styles.speedBtn,
-                activeSpeed === s.l && styles.speedBtnActive,
-              ]}
-              onPress={() => handleSpeed(s.l, s.cmd)}
-              activeOpacity={0.7}>
-              <Text
+        <View style={styles.specsContainer}>
+          <View style={styles.specSection}>
+            <Text style={styles.sectionLabel}>THRUST PROTOCOL</Text>
+            <View style={styles.speedRow}>
+              {[
+                {l: 1, label: 'L-1', cmd: CMD_SPEED_1},
+                {l: 2, label: 'L-2', cmd: CMD_SPEED_2},
+                {l: 3, label: 'L-3', cmd: CMD_SPEED_3},
+              ].map(s => (
+                <TouchableOpacity
+                  key={s.l}
+                  style={[
+                    styles.speedBtn,
+                    activeSpeed === s.l && styles.speedBtnActive,
+                  ]}
+                  onPress={() => handleSpeed(s.l, s.cmd)}
+                  activeOpacity={0.7}>
+                  <Text
+                    style={[
+                      styles.speedText,
+                      activeSpeed === s.l && styles.speedTextActive,
+                    ]}>
+                    {s.label}
+                  </Text>
+                  {activeSpeed === s.l && <View style={styles.speedGlow} />}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.specSection}>
+            <Text style={styles.sectionLabel}>OPERATIONAL MODE</Text>
+            <View style={styles.modeRow}>
+              <TouchableOpacity
                 style={[
-                  styles.speedText,
-                  activeSpeed === s.l && styles.speedTextActive,
-                ]}>
-                {s.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                  styles.modeBtn,
+                  activeMode === 'manual' && styles.modeBtnActiveManual,
+                ]}
+                onPress={() => handleMode('manual')}
+                activeOpacity={0.7}>
+                <Text style={styles.modeIcon}>🎮</Text>
+                <Text
+                  style={[
+                    styles.modeText,
+                    activeMode === 'manual' && styles.modeTextActiveManual,
+                  ]}>
+                  MANUAL
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.modeBtn,
+                  activeMode === 'auto' && styles.modeBtnActiveAuto,
+                ]}
+                onPress={() => handleMode('auto')}
+                activeOpacity={0.7}>
+                <Text style={styles.modeIcon}>🤖</Text>
+                <Text
+                  style={[
+                    styles.modeText,
+                    activeMode === 'auto' && styles.modeTextActiveAuto,
+                  ]}>
+                  AI AUTO
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-
-        {/* Mode buttons */}
-        <Text style={styles.sectionLabel}>MODE</Text>
-        <View style={styles.modeRow}>
-          <TouchableOpacity
-            style={[
-              styles.modeBtn,
-              activeMode === 'manual' && styles.modeBtnActiveManual,
-            ]}
-            onPress={() => handleMode('manual')}
-            activeOpacity={0.7}>
-            <Text style={styles.modeIcon}>🎮</Text>
-            <Text
-              style={[
-                styles.modeText,
-                activeMode === 'manual' && styles.modeTextActive,
-              ]}>
-              MAN
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.modeBtn,
-              activeMode === 'auto' && styles.modeBtnActiveAuto,
-            ]}
-            onPress={() => handleMode('auto')}
-            activeOpacity={0.7}>
-            <Text style={styles.modeIcon}>🤖</Text>
-            <Text
-              style={[
-                styles.modeText,
-                activeMode === 'auto' && styles.modeTextActiveAuto,
-              ]}>
-              AUTO
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Back button */}
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}>
-          <Text style={styles.backText}>← D-PAD</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -208,167 +205,209 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#060D1F',
+    backgroundColor: '#0e1320', // deep space surface
   },
 
-  // LEFT panel
+  // LEFT panel: Tactical Void
   leftPanel: {
-    flex: 3,
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    borderRightWidth: 1,
-    borderRightColor: '#1A2A50',
+    position: 'relative',
   },
-  directionLabel: {
-    color: '#5B9EFF',
+  telemetryOverlay: {
+    position: 'absolute',
+    top: 24,
+    left: 40,
+  },
+  telemetryLabel: {
+    color: '#849495',
+    fontSize: 9,
+    fontFamily: 'Space Grotesk',
+    fontWeight: '700',
+    letterSpacing: 2,
+    marginBottom: 4,
+  },
+  directionData: {
+    color: '#00f0ff',
     fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 3,
-    marginBottom: 16,
-    textAlign: 'center',
+    fontFamily: 'Space Grotesk',
+    fontWeight: '900',
+    letterSpacing: 2,
   },
   spinBtn: {
+    position: 'absolute',
+    bottom: 24,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A2A50',
+    backgroundColor: 'rgba(0, 240, 255, 0.05)',
     borderWidth: 1,
-    borderColor: '#2E8A6A',
-    borderRadius: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    marginTop: 16,
+    borderColor: 'rgba(0, 240, 255, 0.4)',
+    borderRadius: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
   },
   spinIcon: {
-    color: '#5BFFB0',
-    fontSize: 18,
+    color: '#00f0ff',
+    fontSize: 16,
     fontWeight: '700',
-    marginRight: 6,
+    marginRight: 10,
   },
   spinLabel: {
-    color: '#5BFFB0',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1,
+    color: '#00f0ff',
+    fontSize: 10,
+    fontFamily: 'Space Grotesk',
+    fontWeight: '800',
+    letterSpacing: 1.5,
   },
 
-  // RIGHT panel
+  // RIGHT panel: HUD Specs
   rightPanel: {
-    flex: 2,
+    width: 320,
+    backgroundColor: '#161b28', // surface_container_low
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(59, 73, 75, 0.3)',
     paddingVertical: 20,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     justifyContent: 'space-between',
+  },
+  rightHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   connInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0D1B3A',
-    borderRadius: 10,
-    padding: 10,
+    backgroundColor: '#0e1320',
+    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: '#1A2A50',
+    borderColor: 'rgba(59, 73, 75, 0.2)',
+    flex: 1,
+    marginRight: 12,
   },
   statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     marginRight: 8,
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 4,
   },
   deviceText: {
-    color: '#8B9CC7',
-    fontSize: 12,
-    fontWeight: '600',
+    color: '#b9cacb',
+    fontSize: 10,
+    fontFamily: 'Space Grotesk',
+    fontWeight: '700',
+    letterSpacing: 1,
     flex: 1,
   },
+  backBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(147, 0, 10, 0.1)',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 180, 171, 0.3)',
+  },
+  backText: {
+    color: '#ffb4ab',
+    fontSize: 9,
+    fontFamily: 'Space Grotesk',
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  specsContainer: {
+    gap: 32,
+  },
+  specSection: {},
   sectionLabel: {
-    color: '#4A6090',
-    fontSize: 10,
+    color: '#849495',
+    fontSize: 9,
+    fontFamily: 'Space Grotesk',
     fontWeight: '700',
     letterSpacing: 2,
-    marginBottom: 6,
-    marginTop: 4,
+    marginBottom: 12,
   },
-
-  // Speed
   speedRow: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
   },
   speedBtn: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 14,
     alignItems: 'center',
-    backgroundColor: '#0D1B3A',
+    backgroundColor: '#252a37',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#1A2A50',
+    borderColor: 'rgba(59, 73, 75, 0.2)',
+    position: 'relative',
   },
   speedBtnActive: {
-    backgroundColor: '#1A2A50',
-    borderColor: '#5B9EFF',
+    borderColor: '#00f0ff',
   },
   speedText: {
-    color: '#4A6090',
-    fontSize: 14,
+    color: '#b9cacb',
+    fontSize: 10,
+    fontFamily: 'Space Grotesk',
     fontWeight: '800',
+    letterSpacing: 1,
   },
   speedTextActive: {
-    color: '#5B9EFF',
+    color: '#00f0ff',
   },
-
-  // Mode
+  speedGlow: {
+    position: 'absolute',
+    bottom: -1,
+    width: 24,
+    height: 3,
+    backgroundColor: '#00f0ff',
+    shadowColor: '#00f0ff',
+    shadowRadius: 8,
+    shadowOpacity: 1,
+    elevation: 4,
+    borderRadius: 2,
+  },
   modeRow: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
   },
   modeBtn: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 14,
     alignItems: 'center',
-    backgroundColor: '#0D1B3A',
+    backgroundColor: '#252a37',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#1A2A50',
+    borderColor: 'rgba(59, 73, 75, 0.2)',
   },
   modeBtnActiveManual: {
-    backgroundColor: '#1A2A50',
-    borderColor: '#5B9EFF',
+    borderColor: '#00f0ff',
+    backgroundColor: 'rgba(0, 240, 255, 0.05)',
   },
   modeBtnActiveAuto: {
-    backgroundColor: '#1A3A28',
-    borderColor: '#5BFFB0',
+    borderColor: '#2ff801',
+    backgroundColor: 'rgba(47, 248, 1, 0.05)',
   },
   modeIcon: {
-    fontSize: 16,
-    marginBottom: 2,
+    fontSize: 18,
+    marginBottom: 4,
   },
   modeText: {
-    color: '#4A6090',
-    fontSize: 10,
+    color: '#849495',
+    fontSize: 9,
+    fontFamily: 'Space Grotesk',
     fontWeight: '700',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
   },
-  modeTextActive: {
-    color: '#5B9EFF',
+  modeTextActiveManual: {
+    color: '#00f0ff',
   },
   modeTextActiveAuto: {
-    color: '#5BFFB0',
-  },
-
-  // Back button
-  backBtn: {
-    paddingVertical: 12,
-    alignItems: 'center',
-    backgroundColor: '#1A1A2A',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#2A2A4A',
-  },
-  backText: {
-    color: '#8B9CC7',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 1,
+    color: '#2ff801',
   },
 });
 

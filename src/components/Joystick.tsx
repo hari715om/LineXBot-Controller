@@ -1,18 +1,10 @@
-/**
- * Joystick Component
- *
- * Custom virtual joystick built with PanResponder.
- * Maps analog stick position to direction commands.
- * Sends STOP when finger lifts.
- */
-
 import React, {useRef, useState, useCallback} from 'react';
 import {View, StyleSheet, PanResponder, Animated, Dimensions} from 'react-native';
 
-const JOYSTICK_SIZE = 180;
-const KNOB_SIZE = 70;
+const JOYSTICK_SIZE = 200; // slightly larger
+const KNOB_SIZE = 80;
 const MAX_DISTANCE = (JOYSTICK_SIZE - KNOB_SIZE) / 2;
-const DEAD_ZONE = 15; // Ignore tiny movements
+const DEAD_ZONE = 15;
 
 interface JoystickProps {
   onDirectionChange: (direction: string | null) => void;
@@ -30,11 +22,10 @@ const Joystick: React.FC<JoystickProps> = ({onDirectionChange}) => {
     if (distance < DEAD_ZONE) return null;
 
     const angle = Math.atan2(-y, x) * (180 / Math.PI);
-    // angle: 0=right, 90=up, -90=down, 180/-180=left
-    if (angle >= -45 && angle < 45) return 'L';      // Physical right → send L (swapped)
-    if (angle >= 45 && angle < 135) return 'F';       // Up → Forward
-    if (angle >= -135 && angle < -45) return 'B';     // Down → Backward
-    return 'R';                                        // Physical left → send R (swapped)
+    if (angle >= -45 && angle < 45) return 'L';      // Physical right -> send L (swapped)
+    if (angle >= 45 && angle < 135) return 'F';
+    if (angle >= -135 && angle < -45) return 'B';
+    return 'R';
   }, []);
 
   const emitDirection = useCallback(
@@ -60,7 +51,6 @@ const Joystick: React.FC<JoystickProps> = ({onDirectionChange}) => {
         let dx = gesture.dx;
         let dy = gesture.dy;
 
-        // Clamp to circle
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist > MAX_DISTANCE) {
           dx = (dx / dist) * MAX_DISTANCE;
@@ -75,76 +65,57 @@ const Joystick: React.FC<JoystickProps> = ({onDirectionChange}) => {
         Animated.spring(pan, {
           toValue: {x: 0, y: 0},
           useNativeDriver: false,
-          friction: 5,
-          tension: 40,
+          friction: 6,
+          tension: 50,
         }).start();
         emitDirection(null);
       },
     }),
   ).current;
 
+  // Stitch dynamic colors
   const dirColor =
     currentDir === 'F'
-      ? '#5B9EFF'
+      ? '#00f0ff' // primary_container
       : currentDir === 'B'
-        ? '#FF5B5B'
+        ? '#af3200' // on_tertiary_container (red/critical)
         : currentDir === 'L' || currentDir === 'R'
-          ? '#FFD55B'
-          : '#3A4A6A';
+          ? '#2ff801' // secondary_container (yellow/greenish)
+          : 'rgba(47, 53, 66, 0.8)'; // surface_variant (idle glass)
 
   return (
     <View style={styles.container}>
-      {/* Direction indicators */}
       <View style={styles.indicatorTop}>
-        <View
-          style={[
-            styles.indicator,
-            currentDir === 'F' && styles.indicatorActive,
-          ]}
-        />
+        <View style={[styles.indicator, currentDir === 'F' && styles.indicatorActive]} />
       </View>
       <View style={styles.indicatorRow}>
-        <View
-          style={[
-            styles.indicator,
-            (currentDir === 'R') && styles.indicatorActiveYellow,
-          ]}
-        />
-        {/* Joystick base */}
+        <View style={[styles.indicator, currentDir === 'R' && styles.indicatorActiveYellow]} />
+        
         <View style={styles.joystickBase}>
-          {/* Grid lines for visual effect */}
           <View style={styles.gridH} />
           <View style={styles.gridV} />
-          <View style={styles.gridCircle} />
+          <View style={styles.gridCircleOuter} />
+          <View style={styles.gridCircleInner} />
 
-          {/* Draggable knob */}
           <Animated.View
             style={[
               styles.knob,
               {
                 transform: [{translateX: pan.x}, {translateY: pan.y}],
                 backgroundColor: dirColor,
-                borderColor: dirColor,
+                shadowColor: dirColor,
               },
+              currentDir ? styles.knobActive : null
             ]}
             {...panResponder.panHandlers}>
             <View style={styles.knobInner} />
           </Animated.View>
         </View>
-        <View
-          style={[
-            styles.indicator,
-            (currentDir === 'L') && styles.indicatorActiveYellow,
-          ]}
-        />
+        
+        <View style={[styles.indicator, currentDir === 'L' && styles.indicatorActiveYellow]} />
       </View>
       <View style={styles.indicatorBottom}>
-        <View
-          style={[
-            styles.indicator,
-            currentDir === 'B' && styles.indicatorActiveRed,
-          ]}
-        />
+        <View style={[styles.indicator, currentDir === 'B' && styles.indicatorActiveRed]} />
       </View>
     </View>
   );
@@ -159,88 +130,96 @@ const styles = StyleSheet.create({
     width: JOYSTICK_SIZE,
     height: JOYSTICK_SIZE,
     borderRadius: JOYSTICK_SIZE / 2,
-    backgroundColor: '#0A1530',
-    borderWidth: 2,
-    borderColor: '#1A2A50',
+    backgroundColor: '#0e1320', // surface (the infinite void)
+    borderWidth: 1,
+    borderColor: 'rgba(132, 148, 149, 0.2)', // outline tint
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
   gridH: {
     position: 'absolute',
-    width: JOYSTICK_SIZE - 20,
+    width: JOYSTICK_SIZE,
     height: 1,
-    backgroundColor: '#1A2A50',
+    backgroundColor: 'rgba(59, 73, 75, 0.3)', // outline_variant
   },
   gridV: {
     position: 'absolute',
     width: 1,
-    height: JOYSTICK_SIZE - 20,
-    backgroundColor: '#1A2A50',
+    height: JOYSTICK_SIZE,
+    backgroundColor: 'rgba(59, 73, 75, 0.3)',
   },
-  gridCircle: {
+  gridCircleOuter: {
     position: 'absolute',
-    width: JOYSTICK_SIZE * 0.5,
-    height: JOYSTICK_SIZE * 0.5,
-    borderRadius: JOYSTICK_SIZE * 0.25,
+    width: JOYSTICK_SIZE * 0.75,
+    height: JOYSTICK_SIZE * 0.75,
+    borderRadius: JOYSTICK_SIZE * 0.375,
     borderWidth: 1,
-    borderColor: '#1A2A50',
+    borderColor: 'rgba(59, 73, 75, 0.2)',
+  },
+  gridCircleInner: {
+    position: 'absolute',
+    width: JOYSTICK_SIZE * 0.3,
+    height: JOYSTICK_SIZE * 0.3,
+    borderRadius: JOYSTICK_SIZE * 0.15,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 73, 75, 0.2)',
+    backgroundColor: '#161b28', // surface_container_low
   },
   knob: {
     width: KNOB_SIZE,
     height: KNOB_SIZE,
     borderRadius: KNOB_SIZE / 2,
     borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#5B9EFF',
+    elevation: 4,
+  },
+  knobActive: {
     shadowOffset: {width: 0, height: 0},
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 8,
+    shadowOpacity: 0.8,
+    shadowRadius: 15,
+    elevation: 10,
   },
   knobInner: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
-  indicatorTop: {
-    marginBottom: 8,
-  },
-  indicatorBottom: {
-    marginTop: 8,
-  },
+  indicatorTop: { marginBottom: 16 },
+  indicatorBottom: { marginTop: 16 },
   indicatorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 16,
   },
   indicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#1A2030',
+    width: 12,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#2f3542', // surface_variant
   },
   indicatorActive: {
-    backgroundColor: '#5B9EFF',
-    shadowColor: '#5B9EFF',
+    backgroundColor: '#00f0ff',
+    shadowColor: '#00f0ff',
     shadowOpacity: 0.8,
-    shadowRadius: 4,
+    shadowRadius: 6,
     elevation: 4,
   },
   indicatorActiveRed: {
-    backgroundColor: '#FF5B5B',
-    shadowColor: '#FF5B5B',
+    backgroundColor: '#ffb59e',
+    shadowColor: '#ffb59e',
     shadowOpacity: 0.8,
-    shadowRadius: 4,
+    shadowRadius: 6,
     elevation: 4,
   },
   indicatorActiveYellow: {
-    backgroundColor: '#FFD55B',
-    shadowColor: '#FFD55B',
+    backgroundColor: '#2ff801',
+    shadowColor: '#2ff801',
     shadowOpacity: 0.8,
-    shadowRadius: 4,
+    shadowRadius: 6,
     elevation: 4,
   },
 });
