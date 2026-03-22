@@ -1,15 +1,9 @@
 import React, {useState, useEffect, useCallback} from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  StatusBar,
-  Alert,
-} from 'react-native';
+import {View, TouchableOpacity, Text, StyleSheet, StatusBar, Alert} from 'react-native';
 import BluetoothService from '../services/BluetoothService';
 import RobotCommandService from '../services/RobotCommandService';
 import type {ConnectionStatus} from '../services/BluetoothService';
+import {useRobotState} from '../context/RobotStateContext';
 import Joystick from '../components/Joystick';
 import {
   CMD_STOP,
@@ -26,12 +20,11 @@ interface Props {
 }
 
 const JoystickScreen: React.FC<Props> = ({navigation}) => {
-  const [connectionStatus, setConnectionStatus] =
-    useState<ConnectionStatus>('connected');
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connected');
   const [deviceName, setDeviceName] = useState<string>('');
   const [activeDirection, setActiveDirection] = useState<string>('IDLE');
-  const [activeSpeed, setActiveSpeed] = useState(2);
-  const [activeMode, setActiveMode] = useState<'manual' | 'auto'>('auto');
+  
+  const {activeSpeed, setSpeed, activeMode, setMode} = useRobotState();
 
   useEffect(() => {
     setDeviceName(BluetoothService.getConnectedDeviceName() ?? 'Unknown');
@@ -63,16 +56,12 @@ const JoystickScreen: React.FC<Props> = ({navigation}) => {
   }, []);
 
   const handleSpeed = useCallback((level: number, cmd: string) => {
-    setActiveSpeed(level);
-    RobotCommandService.sendCommand(cmd);
-  }, []);
+    setSpeed(level);
+  }, [setSpeed]);
 
   const handleMode = useCallback((mode: 'manual' | 'auto') => {
-    setActiveMode(mode);
-    RobotCommandService.sendCommand(
-      mode === 'auto' ? CMD_AUTO_MODE : CMD_MANUAL_MODE,
-    );
-  }, []);
+    setMode(mode);
+  }, [setMode]);
 
   const handleSpin = useCallback(() => {
     RobotCommandService.sendCommand(CMD_SPIN);

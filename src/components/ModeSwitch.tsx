@@ -1,20 +1,17 @@
-import React, {useState, useCallback} from 'react';
+import React, {useCallback} from 'react';
 import {View, TouchableOpacity, Text, StyleSheet} from 'react-native';
-import RobotCommandService from '../services/RobotCommandService';
-import {CMD_AUTO_MODE, CMD_MANUAL_MODE} from '../constants/commands';
+import {useRobotState} from '../context/RobotStateContext';
 
 const ModeSwitch: React.FC = () => {
-  const [activeMode, setActiveMode] = useState<'manual' | 'auto'>('auto');
+  const {activeMode, setMode} = useRobotState();
 
   const handleAutoPress = useCallback(() => {
-    setActiveMode('auto');
-    RobotCommandService.sendCommand(CMD_AUTO_MODE);
-  }, []);
+    setMode('auto');
+  }, [setMode]);
 
   const handleManualPress = useCallback(() => {
-    setActiveMode('manual');
-    RobotCommandService.sendCommand(CMD_MANUAL_MODE);
-  }, []);
+    setMode('manual');
+  }, [setMode]);
 
   return (
     <View style={styles.container}>

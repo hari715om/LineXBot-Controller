@@ -1,6 +1,6 @@
-import React, {useState, useCallback} from 'react';
+import React, {useCallback} from 'react';
 import {View, TouchableOpacity, Text, StyleSheet} from 'react-native';
-import RobotCommandService from '../services/RobotCommandService';
+import {useRobotState} from '../context/RobotStateContext';
 import {CMD_SPEED_1, CMD_SPEED_2, CMD_SPEED_3} from '../constants/commands';
 
 const SPEEDS = [
@@ -10,12 +10,11 @@ const SPEEDS = [
 ];
 
 const SpeedSlider: React.FC = () => {
-  const [activeSpeed, setActiveSpeed] = useState(1);
+  const {activeSpeed, setSpeed} = useRobotState();
 
   const handleSpeedPress = useCallback((speed: typeof SPEEDS[0]) => {
-    setActiveSpeed(speed.level);
-    RobotCommandService.sendCommand(speed.value);
-  }, []);
+    setSpeed(speed.level);
+  }, [setSpeed]);
 
   return (
     <View style={styles.container}>

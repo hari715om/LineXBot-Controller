@@ -12,13 +12,23 @@ import {
 } from 'react-native';
 import {BluetoothDevice} from 'react-native-bluetooth-classic';
 import BluetoothService from '../services/BluetoothService';
+import RobotCommandService from '../services/RobotCommandService';
 import type {ConnectionStatus} from '../services/BluetoothService';
+import {useRobotState} from '../context/RobotStateContext';
+import {
+  CMD_SPEED_1,
+  CMD_SPEED_2,
+  CMD_SPEED_3,
+  CMD_AUTO_MODE,
+  CMD_MANUAL_MODE,
+} from '../constants/commands';
 
 interface Props {
   navigation: any;
 }
 
 const BluetoothScreen: React.FC<Props> = ({navigation}) => {
+  const {activeSpeed, activeMode} = useRobotState();
   const [devices, setDevices] = useState<BluetoothDevice[]>([]);
   const [scanning, setScanning] = useState(false);
   const [connectionStatus, setConnectionStatus] =
@@ -81,14 +91,23 @@ const BluetoothScreen: React.FC<Props> = ({navigation}) => {
     const success = await BluetoothService.connect(device);
 
     if (success) {
-      navigation.navigate('Controller');
+      const modeCmd = activeMode === 'auto' ? CMD_AUTO_MODE : CMD_MANUAL_MODE;
+      const speedCmd = activeSpeed === 1 ? CMD_SPEED_1 : activeSpeed === 3 ? CMD_SPEED_3 : CMD_SPEED_2;
+      
+      RobotCommandService.sendCommand(modeCmd);
+      
+      setTimeout(() => {
+        RobotCommandService.sendCommand(speedCmd);
+        navigation.navigate('Controller');
+        setConnectingDeviceId(null);
+      }, 300);
     } else {
       Alert.alert(
         'Connection Failed',
         `Could not connect to ${device.name || device.id}. Make sure the device is powered on and in range.`,
       );
+      setConnectingDeviceId(null);
     }
-    setConnectingDeviceId(null);
   };
 
   const renderDevice = ({item}: {item: BluetoothDevice}) => {
