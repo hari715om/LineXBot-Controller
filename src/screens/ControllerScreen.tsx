@@ -29,7 +29,7 @@ const ControllerScreen: React.FC<Props> = ({navigation}) => {
 
     BluetoothService.isConnected().then(alive => {
       if (!alive) {
-        navigation.goBack();
+        if (navigation?.canGoBack?.()) navigation.goBack();
       }
     });
 
@@ -42,7 +42,9 @@ const ControllerScreen: React.FC<Props> = ({navigation}) => {
           [
             {
               text: 'ACKNOWLEDGE',
-              onPress: () => navigation.goBack(),
+              onPress: () => {
+                if (navigation?.canGoBack?.()) navigation.goBack();
+              },
             },
           ],
         );
@@ -63,7 +65,7 @@ const ControllerScreen: React.FC<Props> = ({navigation}) => {
           style: 'destructive',
           onPress: async () => {
             await BluetoothService.disconnect();
-            navigation.goBack();
+            if (navigation?.canGoBack?.()) navigation.goBack();
           },
         },
       ],

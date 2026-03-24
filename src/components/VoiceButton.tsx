@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback, useRef} from 'react';
+import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {
   View,
   TouchableOpacity,
@@ -7,168 +7,228 @@ import {
   Animated,
   Platform,
   PermissionsAndroid,
+  NativeModules,
+  NativeEventEmitter,
 } from 'react-native';
-import Voice, {
-  SpeechResultsEvent,
-  SpeechErrorEvent,
-} from '@react-native-voice/voice';
 import RobotCommandService from '../services/RobotCommandService';
-import {COMMAND_LABELS} from '../constants/commands';
+import {VOICE_COMMAND_MAP, COMMAND_LABELS} from '../constants/commands';
+import {useRobotState} from '../context/RobotStateContext';
+
+const {VoiceCommand} = NativeModules;
+const voiceEmitter = new NativeEventEmitter(VoiceCommand);
+
+// Safety timeout — if Android never fires onResults after finger release,
+// cancel after this many ms to prevent UI hanging forever
+const RESULT_TIMEOUT_MS = 3000;
 
 const VoiceButton: React.FC = () => {
-  const [isListening, setIsListening] = useState(false);
-  const [spokenText, setSpokenText] = useState('');
+  const [isListening, setIsListening]       = useState(false);
+  const [spokenText, setSpokenText]         = useState('');
   const [matchedCommand, setMatchedCommand] = useState('');
-  const [error, setError] = useState('');
-  const [pulseAnim] = useState(new Animated.Value(1));
-  const isListeningIntent = useRef(false);
+  const [error, setError]                   = useState('');
+  const [pulseAnim]                         = useState(new Animated.Value(1));
 
+  const pulseRef          = useRef<Animated.CompositeAnimation | null>(null);
+  const timeoutRef        = useRef<NodeJS.Timeout | null>(null);
+  const isListeningRef    = useRef(false); // ref mirror for use inside callbacks
+
+  const {activeMode} = useRobotState();
+
+  // ── Sync ref with state ──────────────────────────────────────────────────
+  useEffect(() => {
+    isListeningRef.current = isListening;
+  }, [isListening]);
+
+  // ── Cleanup on unmount ───────────────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      clearResultTimeout();
+      // cancelAndDestroy — not stopListening — on unmount
+      VoiceCommand.cancelAndDestroy();
+      voiceEmitter.removeAllListeners('onVoiceResult');
+      voiceEmitter.removeAllListeners('onVoiceError');
+      RobotCommandService.resetVoiceTracker();
+    };
+  }, []);
+
+  // ── Permission ───────────────────────────────────────────────────────────
   const requestMicPermission = useCallback(async (): Promise<boolean> => {
-    if (Platform.OS !== 'android') {
-      return true;
-    }
+    if (Platform.OS !== 'android') return true;
     try {
-      const granted = await PermissionsAndroid.request(
+      const result = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
       );
-      return granted === PermissionsAndroid.RESULTS.GRANTED;
+      return result === PermissionsAndroid.RESULTS.GRANTED;
     } catch {
       return false;
     }
   }, []);
 
-  useEffect(() => {
-    const onSpeechPartialResults = (e: SpeechResultsEvent) => {
-      const text = e.value?.[0] ?? '';
-      setSpokenText(text);
-      processCommand(text);
-    };
+  // ── Animation ────────────────────────────────────────────────────────────
+  const startPulse = useCallback(() => {
+    pulseRef.current = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {toValue: 1.25, duration: 600, useNativeDriver: true}),
+        Animated.timing(pulseAnim, {toValue: 1,    duration: 600, useNativeDriver: true}),
+      ]),
+    );
+    pulseRef.current.start();
+  }, [pulseAnim]);
 
-    const restartCurrentSession = () => {
-      if (isListeningIntent.current) {
-        Voice.start('en-US').catch(err => {
-          console.warn('[Voice] Auto-restart failed:', err);
-          isListeningIntent.current = false;
-          setIsListening(false);
-          stopPulseAnimation();
-        });
-      } else {
-        setIsListening(false);
-        stopPulseAnimation();
-      }
-    };
+  const stopPulse = useCallback(() => {
+    pulseRef.current?.stop();
+    pulseRef.current = null;
+    pulseAnim.setValue(1);
+  }, [pulseAnim]);
 
-    const onSpeechError = (e: SpeechErrorEvent) => {
-      if (e.error && e.error.message && e.error.message.includes('No match')) {
-        // Ignore "No match" from short silence to keep log clean
-      } else {
-        console.warn('[Voice] Error:', e.error);
-        setError('Could not recognize speech');
-      }
-      restartCurrentSession();
-    };
-
-    const onSpeechEnd = () => {
-      restartCurrentSession();
-    };
-
-    Voice.onSpeechPartialResults = onSpeechPartialResults;
-    Voice.onSpeechError = onSpeechError;
-    Voice.onSpeechEnd = onSpeechEnd;
-
-    return () => {
-      Voice.destroy().then(Voice.removeAllListeners);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // ── Timeout helpers ──────────────────────────────────────────────────────
+  const clearResultTimeout = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
   }, []);
 
-  const processCommand = async (text: string) => {
-    const cmd = await RobotCommandService.processVoiceCommand(text);
-    if (cmd) {
-      setMatchedCommand(COMMAND_LABELS[cmd] ?? cmd);
-      setError('');
-    } else {
-      setMatchedCommand('');
-      setError(`Unknown: "${text}"`);
-    }
-  };
-
-  const startPulseAnimation = () => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.25,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
-  };
-
-  const stopPulseAnimation = () => {
-    pulseAnim.stopAnimation();
-    pulseAnim.setValue(1);
-  };
-
-  const toggleListening = async () => {
-    if (isListeningIntent.current) {
-      isListeningIntent.current = false;
-      try {
-        await Voice.stop();
-      } catch (e) {
-        console.error('[Voice] Stop error:', e);
-      }
+  const startResultTimeout = useCallback(() => {
+    clearResultTimeout();
+    timeoutRef.current = setTimeout(() => {
+      // Android never responded — hard cancel
+      VoiceCommand.cancelAndDestroy();
+      voiceEmitter.removeAllListeners('onVoiceResult');
+      voiceEmitter.removeAllListeners('onVoiceError');
+      stopPulse();
       setIsListening(false);
-      stopPulseAnimation();
+      setError('No response — try again');
       RobotCommandService.resetVoiceTracker();
-    } else {
-      const hasPerm = await requestMicPermission();
-      if (!hasPerm) {
-        setError('MIC PERMISSION DENIED');
-        return;
-      }
+    }, RESULT_TIMEOUT_MS);
+  }, [clearResultTimeout, stopPulse]);
 
-      setSpokenText('');
-      setMatchedCommand('');
-      setError('');
-      setIsListening(true);
-      startPulseAnimation();
-      isListeningIntent.current = true;
+  // ── Reset UI to idle ─────────────────────────────────────────────────────
+  const resetToIdle = useCallback(() => {
+    clearResultTimeout();
+    stopPulse();
+    setIsListening(false);
+    RobotCommandService.resetVoiceTracker();
+  }, [clearResultTimeout, stopPulse]);
 
-      try {
-        await Voice.start('en-US');
-      } catch (e) {
-        console.error('[Voice] Start error:', e);
-        setError('VOICE SYSTEM FAILURE');
-        setIsListening(false);
-        stopPulseAnimation();
-        isListeningIntent.current = false;
-      }
+  // ── Start listening (finger down) ────────────────────────────────────────
+  const startListening = useCallback(async () => {
+    // Guard — don't start if already listening (double tap protection)
+    if (isListeningRef.current) return;
+
+    const hasPerm = await requestMicPermission();
+    if (!hasPerm) {
+      setError('MIC PERMISSION DENIED');
+      return;
     }
-  };
 
+    setSpokenText('');
+    setMatchedCommand('');
+    setError('');
+    setIsListening(true);
+    startPulse();
+
+    // Register listeners BEFORE calling native start
+    const resultSub = voiceEmitter.addListener(
+      'onVoiceResult',
+      async (text: string) => {
+        clearResultTimeout();
+        resultSub.remove();
+        errorSub.remove();
+
+        if (!text) {
+          // Empty result — no speech detected
+          resetToIdle();
+          return;
+        }
+
+        setSpokenText(text);
+
+        const cmd = await RobotCommandService.processVoiceCommand(text);
+        if (cmd) {
+          setMatchedCommand(COMMAND_LABELS[cmd] ?? cmd);
+          setError('');
+        } else {
+          setMatchedCommand('');
+          setError(`Unknown: "${text}"`);
+        }
+
+        resetToIdle();
+      },
+    );
+
+    const errorSub = voiceEmitter.addListener(
+      'onVoiceError',
+      (errMsg: string) => {
+        clearResultTimeout();
+        resultSub.remove();
+        errorSub.remove();
+        console.warn('[Voice] Native error:', errMsg);
+        setError('Could not recognize — try again');
+        resetToIdle();
+      },
+    );
+
+    VoiceCommand.startListening();
+  }, [
+    requestMicPermission,
+    startPulse,
+    clearResultTimeout,
+    resetToIdle,
+  ]);
+
+  // ── Stop listening (finger up) ───────────────────────────────────────────
+  const stopListeningOnRelease = useCallback(() => {
+    if (!isListeningRef.current) return;
+
+    // Tell Android: stop recording NOW, evaluate immediately
+    // Recognizer stays alive — onResults will fire shortly after
+    VoiceCommand.stopListening();
+
+    // Start safety timeout in case onResults never fires
+    startResultTimeout();
+  }, [startResultTimeout]);
+
+  // ── Press handlers ───────────────────────────────────────────────────────
+  const handlePressIn = useCallback(() => {
+    if (activeMode === 'auto') {
+      setError('SWITCH TO MANUAL MODE FIRST');
+      return;
+    }
+    startListening();
+  }, [activeMode, startListening]);
+
+  const handlePressOut = useCallback(() => {
+    stopListeningOnRelease();
+  }, [stopListeningOnRelease]);
+
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>VOCAL OVERRIDE</Text>
 
-      <Animated.View style={[{transform: [{scale: pulseAnim}]}, isListening && styles.glowRing]}>
+      <Animated.View
+        style={[
+          {transform: [{scale: pulseAnim}]},
+          isListening && styles.glowRing,
+        ]}>
         <TouchableOpacity
-          style={[styles.micBtn, isListening && styles.micBtnActive]}
-          onPress={toggleListening}
+          style={[
+            styles.micBtn,
+            isListening && styles.micBtnActive,
+            activeMode === 'auto' && styles.micBtnDisabled,
+          ]}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
           activeOpacity={0.7}>
           <Text style={[styles.micIcon, isListening && styles.micIconActive]}>
-            {isListening ? '🔴' : '🎤'}
+            {activeMode === 'auto' ? '🔒' : isListening ? '🔴' : '🎤'}
           </Text>
         </TouchableOpacity>
       </Animated.View>
 
       <Text style={[styles.statusText, isListening && styles.statusTextActive]}>
-        {isListening ? 'AWAITING COMMAND...' : 'SYSTEM IDLE'}
+        {isListening ? 'LISTENING...' : activeMode === 'auto' ? 'LOCKED' : 'HOLD TO SPEAK'}
       </Text>
 
       {spokenText ? (
@@ -211,7 +271,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#161b28', // surface_container_low
+    backgroundColor: '#161b28',
     borderWidth: 1,
     borderColor: 'rgba(59, 73, 75, 0.4)',
     justifyContent: 'center',
@@ -223,12 +283,17 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   micBtnActive: {
-    backgroundColor: '#af3200', // on_tertiary_container / red glow base
+    backgroundColor: '#af3200',
     borderColor: '#ffcfc1',
     shadowColor: '#ffcfc1',
     shadowOpacity: 0.6,
     shadowRadius: 20,
     elevation: 10,
+  },
+  micBtnDisabled: {
+    backgroundColor: '#1a1a2e',
+    borderColor: 'rgba(59, 73, 75, 0.2)',
+    opacity: 0.45,
   },
   glowRing: {
     borderRadius: 50,
@@ -236,13 +301,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 181, 158, 0.3)',
     padding: 6,
   },
-  micIcon: {
-    fontSize: 32,
-    opacity: 0.6,
-  },
-  micIconActive: {
-    opacity: 1,
-  },
+  micIcon: {fontSize: 32, opacity: 0.6},
+  micIconActive: {opacity: 1},
   statusText: {
     color: '#849495',
     fontSize: 10,
@@ -251,9 +311,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     marginTop: 16,
   },
-  statusTextActive: {
-    color: '#ffb59e', // tertiary_fixed_dim
-  },
+  statusTextActive: {color: '#ffb59e'},
   resultContainer: {
     alignItems: 'center',
     marginTop: 16,
@@ -265,7 +323,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(59, 73, 75, 0.2)',
   },
   spokenText: {
-    color: '#dee2f4', // on_surface
+    color: '#dee2f4',
     fontSize: 14,
     fontFamily: 'Manrope',
     fontWeight: '500',
@@ -273,7 +331,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   matchBadge: {
-    backgroundColor: '#0f6d00', // on_secondary_container
+    backgroundColor: '#0f6d00',
     borderRadius: 4,
     paddingHorizontal: 8,
     paddingVertical: 6,
@@ -281,16 +339,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   matchText: {
-    color: '#79ff5b', // secondary_fixed
+    color: '#79ff5b',
     fontSize: 11,
     fontFamily: 'Space Grotesk',
     fontWeight: '700',
     letterSpacing: 1.5,
   },
   errorBadge: {
-    backgroundColor: 'rgba(147, 0, 10, 0.2)', // error_container transparent
+    backgroundColor: 'rgba(147, 0, 10, 0.2)',
     borderWidth: 1,
-    borderColor: '#ffb4ab', // error
+    borderColor: '#ffb4ab',
     borderRadius: 4,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -299,7 +357,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   errorText: {
-    color: '#ffb4ab', // error (high contrast text)
+    color: '#ffb4ab',
     fontSize: 12,
     fontFamily: 'Space Grotesk',
     fontWeight: '800',

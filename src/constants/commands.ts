@@ -74,3 +74,79 @@ export const COMMAND_LABELS: Record<string, string> = {
   [CMD_AUTO_MODE]: 'Auto',
   [CMD_MANUAL_MODE]: 'Manual',
 };
+
+/**
+ * Voice aliases for fuzzy matching.
+ * Each entry has the spoken alias, the command it maps to,
+ * and a weight (higher = preferred when scores are equal).
+ * Kept separate from VOICE_COMMAND_MAP so exact matching still
+ * runs first and fuzzy is only used as fallback.
+ */
+export interface VoiceAlias {
+  alias: string;
+  cmd: string;
+  weight: number;
+}
+
+export const VOICE_ALIASES: VoiceAlias[] = [
+  // ── Forward ──────────────────────────────────────────────
+  {alias: 'forward',      cmd: CMD_FORWARD, weight: 10},
+  {alias: 'go forward',   cmd: CMD_FORWARD, weight: 10},
+  {alias: 'move forward', cmd: CMD_FORWARD, weight: 10},
+  {alias: 'go front',     cmd: CMD_FORWARD, weight: 9},
+  {alias: 'ahead',        cmd: CMD_FORWARD, weight: 8},
+  {alias: 'straight',     cmd: CMD_FORWARD, weight: 8},
+  {alias: 'advance',      cmd: CMD_FORWARD, weight: 7},
+
+  // ── Backward ─────────────────────────────────────────────
+  {alias: 'backward',     cmd: CMD_BACKWARD, weight: 10},
+  {alias: 'go backward',  cmd: CMD_BACKWARD, weight: 10},
+  {alias: 'reverse',      cmd: CMD_BACKWARD, weight: 10},
+  {alias: 'back',         cmd: CMD_BACKWARD, weight: 9},
+  {alias: 'go back',      cmd: CMD_BACKWARD, weight: 9},
+  {alias: 'move back',    cmd: CMD_BACKWARD, weight: 8},
+
+  // ── Left (inverted per your robot constraint) ─────────────
+  {alias: 'left',         cmd: CMD_RIGHT, weight: 10},
+  {alias: 'turn left',    cmd: CMD_RIGHT, weight: 10},
+  {alias: 'go left',      cmd: CMD_RIGHT, weight: 9},
+  {alias: 'steer left',   cmd: CMD_RIGHT, weight: 8},
+
+  // ── Right (inverted) ──────────────────────────────────────
+  {alias: 'right',        cmd: CMD_LEFT, weight: 10},
+  {alias: 'turn right',   cmd: CMD_LEFT, weight: 10},
+  {alias: 'go right',     cmd: CMD_LEFT, weight: 9},
+  {alias: 'steer right',  cmd: CMD_LEFT, weight: 8},
+
+  // ── Stop ──────────────────────────────────────────────────
+  {alias: 'stop',         cmd: CMD_STOP, weight: 10},
+  {alias: 'halt',         cmd: CMD_STOP, weight: 10},
+  {alias: 'brake',        cmd: CMD_STOP, weight: 9},
+  {alias: 'freeze',       cmd: CMD_STOP, weight: 8},
+  {alias: 'pause',        cmd: CMD_STOP, weight: 7},
+
+  // ── Spin ──────────────────────────────────────────────────
+  {alias: 'spin',         cmd: CMD_SPIN, weight: 10},
+  {alias: 'rotate',       cmd: CMD_SPIN, weight: 9},
+  {alias: 'spin around',  cmd: CMD_SPIN, weight: 9},
+  {alias: 'turn around',  cmd: CMD_SPIN, weight: 8},
+
+  // ── Speeds ────────────────────────────────────────────────
+  {alias: 'slow',         cmd: CMD_SPEED_1, weight: 9},
+  {alias: 'speed one',    cmd: CMD_SPEED_1, weight: 8},
+  {alias: 'speed 1',      cmd: CMD_SPEED_1, weight: 8},
+  {alias: 'medium',       cmd: CMD_SPEED_2, weight: 9},
+  {alias: 'speed two',    cmd: CMD_SPEED_2, weight: 8},
+  {alias: 'speed 2',      cmd: CMD_SPEED_2, weight: 8},
+  {alias: 'fast',         cmd: CMD_SPEED_3, weight: 9},
+  {alias: 'speed three',  cmd: CMD_SPEED_3, weight: 8},
+  {alias: 'speed 3',      cmd: CMD_SPEED_3, weight: 8},
+
+  // ── Modes ─────────────────────────────────────────────────
+  {alias: 'auto',         cmd: CMD_AUTO_MODE,   weight: 10},
+  {alias: 'auto mode',    cmd: CMD_AUTO_MODE,   weight: 10},
+  {alias: 'automatic',    cmd: CMD_AUTO_MODE,   weight: 9},
+  {alias: 'line follow',  cmd: CMD_AUTO_MODE,   weight: 8},
+  {alias: 'manual',       cmd: CMD_MANUAL_MODE, weight: 10},
+  {alias: 'manual mode',  cmd: CMD_MANUAL_MODE, weight: 10},
+];
