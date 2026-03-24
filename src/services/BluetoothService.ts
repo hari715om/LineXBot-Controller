@@ -19,6 +19,7 @@ class BluetoothService {
   private connectedDevice: BluetoothDevice | null = null;
   private statusListeners: StatusListener[] = [];
   private _status: ConnectionStatus = 'disconnected';
+  private dataSubscription: any = null;
 
   // --------------- Permissions ---------------
 
@@ -89,6 +90,12 @@ class BluetoothService {
 
   async getPairedDevices(): Promise<BluetoothDevice[]> {
     try {
+      const isBTEnabled = await this.isEnabled();
+      if (!isBTEnabled) {
+        console.log('[BT] Bluetooth is disabled. Requesting to enable...');
+        const turnedOn = await this.requestEnable();
+        if (!turnedOn) return [];
+      }
       return await RNBluetoothClassic.getBondedDevices();
     } catch (err) {
       console.error('[BT] Failed to get paired devices:', err);
@@ -110,6 +117,13 @@ class BluetoothService {
       if (connected) {
         this.connectedDevice = device;
         this.setStatus('connected');
+
+        // PREVENT DISCONNECTS: Consume incoming data so the input buffer doesn't overflow!
+        // The Arduino might be printing debug logs. If we don't read them, Android kills the BT socket.
+        this.dataSubscription = device.onDataReceived(() => {
+          // silently consume incoming serial data
+        });
+
         return true;
       } else {
         this.setStatus('disconnected');
@@ -124,8 +138,15 @@ class BluetoothService {
 
   async disconnect(): Promise<void> {
     try {
+      if (this.dataSubscription) {
+        this.dataSubscription.remove();
+        this.dataSubscription = null;
+      }
       if (this.connectedDevice) {
-        await this.connectedDevice.disconnect();
+        const isConn = await this.connectedDevice.isConnected();
+        if (isConn) {
+          await this.connectedDevice.disconnect();
+        }
       }
     } catch (err) {
       console.error('[BT] Disconnect error:', err);
